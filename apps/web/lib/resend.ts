@@ -8,7 +8,7 @@ function getResendClient(): Resend {
   return new Resend(apiKey);
 }
 
-const FROM_EMAIL = 'NumberDepot <noreply@devsoumyajit.in>';
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'NumberDepot <noreply@devsoumyajit.in>';
 
 export async function sendOTP(email: string, otp: string) {
   await getResendClient().emails.send({

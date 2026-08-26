@@ -16,6 +16,8 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import SettingsIcon from '@mui/icons-material/Settings';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
 import { useAuth } from '@/lib/auth';
 import styles from './layout.module.css';
 
@@ -24,6 +26,8 @@ const navItems = [
   { label: 'Numbers', icon: <PhoneIcon fontSize="small" />, href: '/admin/numbers' },
   { label: 'Users', icon: <PeopleIcon fontSize="small" />, href: '/admin/users' },
   { label: 'Orders', icon: <ShoppingCartIcon fontSize="small" />, href: '/admin/orders' },
+  { label: 'Payments', icon: <CreditCardIcon fontSize="small" />, href: '/admin/payments' },
+  { label: 'Fulfillment', icon: <PublishedWithChangesIcon fontSize="small" />, href: '/admin/fulfillment' },
   { label: 'Broker Apps', icon: <AssignmentIndIcon fontSize="small" />, href: '/admin/brokers' },
   { label: 'Offers', icon: <LocalOfferIcon fontSize="small" />, href: '/admin/offers' },
   { label: 'Commissions', icon: <AccountBalanceWalletIcon fontSize="small" />, href: '/admin/commissions' },

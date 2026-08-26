@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { AuthError } from './auth-middleware';
+import { HttpError } from './http-error';
 import { ensureIndexes } from './ensure-indexes';
 
 type HandlerFn = () => Promise<NextResponse>;
@@ -9,7 +9,9 @@ export async function apiHandler(fn: HandlerFn): Promise<NextResponse> {
     await ensureIndexes();
     return await fn();
   } catch (error) {
-    if (error instanceof AuthError) {
+    // HttpError (and its subclasses AuthError / PricingError) carry a status and
+    // a message that is safe to show the user.
+    if (error instanceof HttpError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error('[API Error]', error);

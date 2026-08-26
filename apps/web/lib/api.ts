@@ -586,6 +586,21 @@ interface ApiOptions extends RequestInit {
   token?: string;
 }
 
+/**
+ * Endpoints that must NEVER fall through to the mock layer.
+ *
+ * The mock handler answers unknown routes with `ok(null)` — a *successful*
+ * response. For anything that moves money or inventory that is catastrophic: a
+ * 500 from the pay route would surface to the user as "Payment successful"
+ * while no charge ever happened. These endpoints fail loudly instead.
+ */
+const NO_MOCK_FALLBACK = ['/orders', '/payments', '/cart'];
+
+function allowsMockFallback(endpoint: string): boolean {
+  const path = endpoint.split('?')[0];
+  return !NO_MOCK_FALLBACK.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+
 async function request<T>(endpoint: string, options: ApiOptions = {}): Promise<ApiResponse<T>> {
   const method = options.method || 'GET';
   let body: unknown = undefined;
@@ -599,6 +614,9 @@ async function request<T>(endpoint: string, options: ApiOptions = {}): Promise<A
   } catch (err) {
     // If it's a clear client error (4xx), don't fall back to mock
     if (err instanceof ApiError && err.status < 500) {
+      throw err;
+    }
+    if (!allowsMockFallback(endpoint)) {
       throw err;
     }
     // Server error or network error — fall back to mock

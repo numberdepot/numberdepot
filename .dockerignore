@@ -1,0 +1,49 @@
+# Without this file the build context is ~1 GB and, worse, `COPY . .` in the
+# Dockerfile overwrites the Linux node_modules installed inside the image with
+# the host's (Windows) ones, and bakes .env secrets into the image layers.
+
+# Dependencies — always installed fresh inside the image
+node_modules
+**/node_modules
+.pnp
+.pnp.js
+
+# Build output
+.next
+**/.next
+out
+**/out
+dist
+build
+.turbo
+**/.turbo
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Secrets — never ship these into an image
+.env
+.env.*
+!.env.example
+
+# VCS and tooling
+.git
+.gitignore
+.github
+.claude
+.vscode
+.idea
+
+# Local data and scratch files (root-level only, so public/ assets survive)
+/*.csv
+/*.jpg
+/*.jpeg
+/*.png
+uploads
+coverage
+*.log
+npm-debug.log*
+
+# Not needed by the build
+*.md
+docker-compose*.yml
+scripts

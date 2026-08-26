@@ -219,44 +219,11 @@ export default function CartPage() {
   );
   const totalMonthly = monthlyFees.reduce((sum, f) => sum + f.total, 0);
 
-  const handleCheckout = async () => {
+  // Payment itself happens on /checkout, where the totals are recomputed on the
+  // server and the card is tokenised by Accept.js before anything is charged.
+  const handleCheckout = () => {
     setCheckingOut(true);
-    try {
-      const orderRes = await api.post<{ id: string }>('/orders', {
-        items: items.map((item) => ({
-          phoneNumberId: item.phoneNumberId,
-          listingId: item.listingId,
-          planType: item.planType,
-          source: item.source,
-          number: item.number,
-          numberType: item.numberType,
-          price: item.price,
-          setupFee: item.setupFee,
-          monthlyFee: item.monthlyFee,
-          numberbarnTn: item.numberbarnTn,
-          rawNumber: item.rawNumber,
-        })),
-        fees: feeBreakdown.map((f) => ({ id: f.id, label: f.label, amount: f.total })),
-      });
-
-      if (!orderRes.data?.id) throw new Error('Order creation failed');
-
-      const payRes = await api.post<{ success: boolean }>(`/orders/${orderRes.data.id}/pay`);
-
-      if (payRes.success) {
-        localStorage.removeItem('nd_cart');
-        await refreshCart();
-        showSnackbar('Payment successful! Your numbers are being activated.', 'success');
-        router.push('/account/orders');
-      } else {
-        throw new Error('Payment failed');
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Checkout failed. Please try again.';
-      showSnackbar(msg, 'error');
-    } finally {
-      setCheckingOut(false);
-    }
+    router.push('/checkout');
   };
 
   if (cartLoading || !feesLoaded) {

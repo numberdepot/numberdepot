@@ -18,20 +18,35 @@ export async function GET(req: NextRequest) {
     const col = await getOrdersCollection();
     const orders = await col.find(filter).sort({ createdAt: -1 }).limit(50000).toArray();
 
-    const header = 'Order Number,User ID,Status,Subtotal,Setup Fees,Monthly Total,Total Amount,Items,Payment Method,Created,Completed';
+    // Quote any field that could contain a comma so the CSV stays parseable.
+    const csvCell = (value: string | number) => {
+      const s = String(value ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+
+    const header = [
+      'Order Number', 'User ID', 'Buyer Email', 'Status', 'Payment Status',
+      'Transaction ID', 'Subtotal', 'Fees', 'Monthly Total', 'Total Amount',
+      'Items', 'Numbers', 'Payment Method', 'Created', 'Completed',
+    ].join(',');
+
     const rows = orders.map((o) => [
       o.orderNumber || o._id.toString(),
       o.userId.toString(),
+      o.userEmail || '',
       o.status,
-      centsToDollars(o.subtotal).toFixed(2),
-      centsToDollars(o.setupFees).toFixed(2),
-      centsToDollars(o.monthlyTotal).toFixed(2),
-      centsToDollars(o.totalAmount).toFixed(2),
+      o.paymentStatus || 'unpaid',
+      o.paymentId || '',
+      centsToDollars(o.subtotal ?? 0).toFixed(2),
+      centsToDollars(o.feesTotal ?? o.setupFees ?? 0).toFixed(2),
+      centsToDollars(o.monthlyTotal ?? 0).toFixed(2),
+      centsToDollars(o.totalAmount ?? 0).toFixed(2),
       o.items?.length || 0,
+      (o.items || []).map((i) => i.number).join(' | '),
       o.paymentMethod || '',
       o.createdAt?.toISOString?.() || '',
       o.completedAt?.toISOString?.() || '',
-    ].join(','));
+    ].map(csvCell).join(','));
 
     const csv = [header, ...rows].join('\n');
 

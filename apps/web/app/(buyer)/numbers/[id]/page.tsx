@@ -75,6 +75,8 @@ interface NumberDetail {
   };
   features?: string[];
   relatedNumbers?: NumberDetail[];
+  isPurchasable?: boolean;
+  reservedByOther?: boolean;
 }
 
 const planIcons: Record<string, React.ReactNode> = {
@@ -177,6 +179,10 @@ export default function NumberDetailPage() {
     }
     if (!number?.listingId) {
       showSnackbar('This number is not available for purchase', 'error');
+      return;
+    }
+    if (number.isPurchasable === false) {
+      showSnackbar('This number is currently in another shopper\'s cart. Please check back shortly.', 'warning');
       return;
     }
     setAddingToCart(true);
@@ -510,7 +516,7 @@ export default function NumberDetailPage() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Due Today</Typography>
                     <Typography variant="subtitle1" color="primary.main" sx={{ fontWeight: 800 }}>
-                      ${((number.salePrice || 0) + totalFees + (activePlanData?.price || 0)).toFixed(2)}
+                      ${((number.salePrice || 0) + totalFees).toFixed(2)}
                     </Typography>
                   </Box>
                 </Box>
@@ -522,11 +528,20 @@ export default function NumberDetailPage() {
                   fullWidth
                   startIcon={<AddShoppingCartIcon />}
                   onClick={handleAddToCart}
-                  disabled={addingToCart}
+                  disabled={addingToCart || number.isPurchasable === false}
                   sx={{ py: 1.5, fontSize: '1.05rem' }}
                 >
-                  {addingToCart ? 'Adding to Cart...' : 'Add to Cart'}
+                  {number.isPurchasable === false
+                    ? 'Currently Unavailable'
+                    : addingToCart
+                      ? 'Adding to Cart...'
+                      : 'Add to Cart'}
                 </Button>
+                {number.reservedByOther && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 0.75 }}>
+                    Someone else is checking out with this number right now.
+                  </Typography>
+                )}
 
                 {number.allowOffers && (
                   <Button

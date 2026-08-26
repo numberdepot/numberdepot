@@ -40,3 +40,8 @@ apps/api/prisma/migrations/
 
 # Coverage
 coverage/
+
+# Docker backup archives
+backup/*
+!backup/.gitkeep
+!backup/README.md

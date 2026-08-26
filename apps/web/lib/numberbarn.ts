@@ -142,65 +142,56 @@ export async function getNumberInfo(tn: string): Promise<NumberBarnNumber | null
   return num;
 }
 
-export async function purchaseNumber(tn: string): Promise<{ success: boolean; orderId?: string; error?: string }> {
-  const token = getToken();
-  if (!token) return { success: false, error: 'No API token configured' };
-
-  try {
-    const res = await fetch(`${NUMBERBARN_BASE_URL}/purchaseNumber`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({ tn }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      console.error(`[NumberBarn] Purchase failed ${res.status}: ${text}`);
-      return { success: false, error: `NumberBarn purchase failed: ${res.status}` };
-    }
-
-    const data = await res.json();
-    return { success: true, orderId: data.orderId || data.id };
-  } catch (err) {
-    console.error('[NumberBarn] Purchase error:', err);
-    return { success: false, error: 'NumberBarn API unreachable' };
-  }
+/**
+ * Server-to-server purchase is NOT possible with NumberBarn's public API.
+ *
+ * Their documented surface covers search, listings, brokerage, number
+ * management, offers and messaging — there is no cart, order or checkout
+ * endpoint. An earlier version of this file posted to `/api/purchaseNumber`,
+ * which returns HTTP 404; worse, it swallowed the failure and the order was
+ * still marked complete, so a buyer could pay for a number they never received.
+ *
+ * NumberBarn numbers are therefore fulfilled by an admin (see the fulfilment
+ * queue at /admin/fulfillment). If a wholesale/white-label ordering agreement
+ * is signed later, implement it here and flip
+ * `numberBarnAutoPurchaseAvailable()` to true — the pay route will pick it up
+ * without any other change.
+ */
+export function numberBarnAutoPurchaseAvailable(): boolean {
+  return false;
 }
 
-interface FeeEntry { id: string; label: string; amount: number; perItem: boolean; }
+export async function purchaseNumber(
+  tn: string
+): Promise<{ success: false; error: string }> {
+  console.warn(
+    `[NumberBarn] Refusing to auto-purchase ${tn} — NumberBarn's public API has no purchase endpoint. Fulfil this order manually.`
+  );
+  return {
+    success: false,
+    error: 'NumberBarn does not expose a purchase API — this number must be fulfilled manually',
+  };
+}
 
-async function getFees(): Promise<{ setupFee: number; monthlyPrice: number }> {
+/** Reads the admin-configured fees through the shared canonical loader. */
+async function getDisplayFees(): Promise<{ setupFee: number; monthlyPrice: number }> {
   try {
-    const settings = await getSettingsCollection();
-    const doc = await settings.findOne({ key: 'fees' });
-    const val = doc?.value;
-
-    if (Array.isArray(val)) {
-      // New array format
-      const feeArr = val as FeeEntry[];
-      const setup = feeArr.find((f) => f.id === 'setup_fee');
-      const monthly = feeArr.find((f) => f.id === 'first_month' || f.id.includes('month'));
-      return {
-        setupFee: setup?.amount ?? 0,
-        monthlyPrice: monthly?.amount ?? 0,
-      };
-    } else if (val && typeof val === 'object') {
-      const old = val as { setupFee?: number; monthlyPrice?: number };
-      return { setupFee: old.setupFee ?? 0, monthlyPrice: old.monthlyPrice ?? 0 };
-    }
+    const { getFees } = await import('./utils/fees');
+    const fees = await getFees();
+    const setup = fees.find((f) => f.id === 'setup_fee');
+    const monthly = fees.find((f) => f.id === 'first_month' || f.id.includes('month'));
+    return {
+      setupFee: setup?.amount ?? 0,
+      monthlyPrice: monthly?.amount ?? 0,
+    };
   } catch {
-    // fall through
+    return { setupFee: 0, monthlyPrice: 0 };
   }
-  return { setupFee: 0, monthlyPrice: 0 };
 }
 
 /** Convert a NumberBarn number to our frontend format with markup applied */
 export async function toOurFormat(nb: NumberBarnNumber) {
-  const [markup, fees] = await Promise.all([getMarkup(), getFees()]);
+  const [markup, fees] = await Promise.all([getMarkup(), getDisplayFees()]);
   const markedUpPrice = applyMarkup(nb.price, markup);
 
   return {

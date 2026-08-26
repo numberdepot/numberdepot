@@ -1,5 +1,19 @@
 import { ObjectId } from 'mongodb';
 
+export interface UserDoc {
+  _id?: ObjectId;
+  email: string;
+  password?: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'buyer' | 'seller' | 'admin';
+  status?: string;
+  phone?: string;
+  companyName?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface NumberDoc {
   _id?: ObjectId;
   number: string; // E.164 format e.g. "12125551234"
@@ -39,7 +53,8 @@ export interface NumberDoc {
 
 export interface OrderItem {
   numberId?: ObjectId;
-  number: string;
+  number: string; // formatted, e.g. "(212) 555-1234"
+  rawNumber?: string; // digits only
   numberType: string;
   source: 'inventory' | 'numberbarn';
   price: number; // cents
@@ -47,24 +62,100 @@ export interface OrderItem {
   monthlyPrice: number; // cents
   planType: string;
   numberbarnTn?: string;
+  /**
+   * Inventory numbers are provisioned to the buyer the moment payment clears.
+   * NumberBarn numbers cannot be bought through their public API, so they land
+   * in the admin fulfilment queue instead.
+   */
+  fulfillmentStatus?: 'pending' | 'provisioned' | 'awaiting_fulfillment' | 'failed' | 'refunded';
+}
+
+/** A single charge line shown at checkout — mirrors the admin `fees` setting. */
+export interface OrderFeeLine {
+  id: string;
+  label: string;
+  unitAmount: number; // cents — per item, or per order
+  perItem: boolean;
+  quantity: number;
+  total: number; // cents
+}
+
+export interface BillingAddress {
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  phoneNumber?: string;
 }
 
 export interface OrderDoc {
   _id?: ObjectId;
   orderNumber: string; // "ND-YYYYMMDD-NNN"
   userId: ObjectId;
+  userEmail?: string;
   items: OrderItem[];
-  subtotal: number; // cents
-  setupFees: number; // cents
-  monthlyTotal: number; // cents
-  totalAmount: number; // cents
+  feeLines: OrderFeeLine[];
+  subtotal: number; // cents — sum of item prices
+  feesTotal: number; // cents — sum of feeLines
+  setupFees: number; // cents — retained for older orders
+  monthlyTotal: number; // cents — recurring, not charged today
+  totalAmount: number; // cents — the amount actually charged
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded';
   paymentMethod?: string;
-  paymentId?: string;
+  paymentId?: string; // gateway transaction id
+  paymentRef?: ObjectId; // _id in the payments collection
+  paymentStatus?: 'unpaid' | 'paid' | 'declined' | 'held' | 'refunded' | 'voided';
+  paymentAttempts?: number;
+  lastPaymentError?: string;
+  billTo?: BillingAddress;
   numberbarnOrderIds?: string[];
   createdAt: Date;
   updatedAt: Date;
   completedAt?: Date;
+}
+
+/** One row per gateway transaction attempt — approved or not. */
+export interface PaymentDoc {
+  _id?: ObjectId;
+  orderId: ObjectId;
+  orderNumber: string;
+  userId: ObjectId;
+  // Denormalised so the admin table never needs a join to render.
+  userEmail: string;
+  userName: string;
+  gateway: 'authorizenet';
+  environment: 'sandbox' | 'production';
+  amount: number; // cents
+  currency: 'USD';
+  status: 'approved' | 'declined' | 'error' | 'held' | 'voided' | 'refunded';
+  transactionId?: string | null;
+  authCode?: string | null;
+  responseCode?: string | null;
+  reasonCode?: string | null;
+  message: string;
+  avsResultCode?: string | null;
+  cvvResultCode?: string | null;
+  cardLast4?: string | null;
+  cardType?: string | null;
+  billTo?: BillingAddress;
+  /** Snapshot of what was bought, so the record stays readable forever. */
+  items: {
+    number: string;
+    numberType: string;
+    source: 'inventory' | 'numberbarn';
+    price: number; // cents
+    planType: string;
+  }[];
+  refundedAmount?: number; // cents
+  refundedAt?: Date;
+  voidedAt?: Date;
+  raw?: unknown;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface UserNumberDoc {

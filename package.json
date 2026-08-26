@@ -11,7 +11,9 @@
     "dev:web": "npm run dev --workspace=apps/web",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "verify:payments": "node scripts/verify-payment-flow.mjs",
+    "migrate:mongo": "node scripts/migrate-mongo.mjs"
   },
   "devDependencies": {
     "turbo": "^2.5.0"

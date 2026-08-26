@@ -1,134 +1,101 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { requireAuth } from '@/lib/auth-middleware';
-import { getNumbersCollection, getOrdersCollection } from '@/lib/collections';
+import { getOrdersCollection } from '@/lib/collections';
 import { apiHandler } from '@/lib/api-handler';
-import { centsToDollars, dollarsToCents } from '@/lib/utils/pricing';
+import { centsToDollars } from '@/lib/utils/pricing';
+import { priceOrder, type RequestedItem } from '@/lib/utils/order-pricing';
+import { insertOrderWithNumber } from '@/lib/utils/order-number';
+import type { OrderDoc } from '@/lib/types/db';
 
+/** Shapes an order document for the client. All money is returned in dollars. */
+export function serializeOrder(o: OrderDoc & { _id: ObjectId }) {
+  return {
+    id: o._id.toString(),
+    orderNumber: o.orderNumber,
+    status: o.status,
+    paymentStatus: o.paymentStatus || 'unpaid',
+    paymentMethod: o.paymentMethod || null,
+    paymentId: o.paymentId || null,
+    subtotal: centsToDollars(o.subtotal),
+    feesTotal: centsToDollars(o.feesTotal ?? 0),
+    monthlyTotal: centsToDollars(o.monthlyTotal ?? 0),
+    totalAmount: centsToDollars(o.totalAmount),
+    feeLines: (o.feeLines || []).map((f) => ({
+      id: f.id,
+      label: f.label,
+      perItem: f.perItem,
+      quantity: f.quantity,
+      unitAmount: centsToDollars(f.unitAmount),
+      total: centsToDollars(f.total),
+    })),
+    items: o.items.map((i) => ({
+      numberId: i.numberId?.toString() || null,
+      number: i.number,
+      rawNumber: i.rawNumber || null,
+      numberType: i.numberType,
+      source: i.source,
+      planType: i.planType,
+      price: centsToDollars(i.price),
+      monthlyPrice: centsToDollars(i.monthlyPrice),
+      fulfillmentStatus: i.fulfillmentStatus || 'pending',
+      numberbarnTn: i.numberbarnTn || null,
+    })),
+    lastPaymentError: o.lastPaymentError || null,
+    createdAt: o.createdAt.toISOString(),
+    completedAt: o.completedAt?.toISOString() || null,
+  };
+}
+
+/**
+ * POST /api/orders — create a pending order from the cart.
+ *
+ * Every price is recomputed here from our own database and from NumberBarn.
+ * Nothing the browser sends about money is trusted.
+ */
 export async function POST(req: NextRequest) {
   return apiHandler(async () => {
     const auth = requireAuth(req);
-    const { items } = await req.json();
+    const body = await req.json();
+    const requested = body?.items as RequestedItem[];
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: 'Items required' }, { status: 400 });
-    }
-
-    const numbersCol = await getNumbersCollection();
-    const ordersCol = await getOrdersCollection();
     const userId = new ObjectId(auth.userId);
+    const priced = await priceOrder(requested, { userId, requireReservation: true });
+
+    const ordersCol = await getOrdersCollection();
     const now = new Date();
 
-    // Validate all reserved numbers belong to this user
-    const orderItems = [];
-    let subtotal = 0;
-    let setupFees = 0;
-    let monthlyTotal = 0;
-
-    for (const item of items) {
-      if (item.source === 'numberbarn') {
-        // NumberBarn items don't have a reservation in our DB
-        const price = dollarsToCents(item.price || 0);
-        const setupFee = dollarsToCents(item.setupFee || 9.99);
-        const monthlyPrice = dollarsToCents(item.monthlyFee || 0);
-
-        orderItems.push({
-          number: item.number,
-          numberType: item.numberType || 'local',
-          source: 'numberbarn' as const,
-          price,
-          setupFee,
-          monthlyPrice,
-          planType: item.planType || 'park',
-          numberbarnTn: item.numberbarnTn || item.rawNumber,
-        });
-
-        subtotal += price;
-        setupFees += setupFee;
-        monthlyTotal += monthlyPrice;
-        continue;
-      }
-
-      // Inventory items
-      if (!item.phoneNumberId || !ObjectId.isValid(item.phoneNumberId)) {
-        return NextResponse.json({ error: `Invalid number ID: ${item.phoneNumberId}` }, { status: 400 });
-      }
-
-      const numDoc = await numbersCol.findOne({
-        _id: new ObjectId(item.phoneNumberId),
-        reservedBy: userId,
-        status: 'reserved',
-      });
-
-      if (!numDoc) {
-        return NextResponse.json(
-          { error: `Number ${item.phoneNumberId} is not reserved by you` },
-          { status: 409 }
-        );
-      }
-
-      orderItems.push({
-        numberId: numDoc._id,
-        number: numDoc.formattedNumber,
-        numberType: numDoc.numberType,
-        source: 'inventory' as const,
-        price: numDoc.price,
-        setupFee: numDoc.setupFee,
-        monthlyPrice: numDoc.monthlyPrice,
-        planType: item.planType || 'park',
-      });
-
-      subtotal += numDoc.price;
-      setupFees += numDoc.setupFee;
-      monthlyTotal += numDoc.monthlyPrice;
-    }
-
-    const totalAmount = subtotal + setupFees + monthlyTotal;
-
-    // Generate order number
-    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-    const todayCount = await ordersCol.countDocuments({
-      createdAt: {
-        $gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
-        $lt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),
-      },
-    });
-    const orderNumber = `ND-${dateStr}-${String(todayCount + 1).padStart(3, '0')}`;
-
-    const order = {
-      orderNumber,
+    const { orderNumber, insertedId } = await insertOrderWithNumber(ordersCol, (num) => ({
+      orderNumber: num,
       userId,
-      items: orderItems,
-      subtotal,
-      setupFees,
-      monthlyTotal,
-      totalAmount,
+      userEmail: auth.email,
+      items: priced.items,
+      feeLines: priced.feeLines,
+      subtotal: priced.subtotal,
+      feesTotal: priced.feesTotal,
+      setupFees: 0,
+      monthlyTotal: priced.monthlyTotal,
+      totalAmount: priced.totalAmount,
       status: 'pending' as const,
+      paymentStatus: 'unpaid' as const,
+      paymentAttempts: 0,
       createdAt: now,
       updatedAt: now,
-    };
+    }));
 
-    const result = await ordersCol.insertOne(order);
+    const created = await ordersCol.findOne({ _id: insertedId });
+    if (!created) {
+      return NextResponse.json({ error: 'Order could not be created' }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
-      data: {
-        id: result.insertedId.toString(),
-        orderNumber,
-        status: 'pending',
-        totalAmount: centsToDollars(totalAmount),
-        items: orderItems.map((i) => ({
-          ...i,
-          numberId: i.numberId?.toString(),
-          price: centsToDollars(i.price),
-          setupFee: centsToDollars(i.setupFee),
-          monthlyPrice: centsToDollars(i.monthlyPrice),
-        })),
-      },
+      data: serializeOrder(created as OrderDoc & { _id: ObjectId }),
     });
   });
 }
 
+/** GET /api/orders — the signed-in user's own orders. */
 export async function GET(req: NextRequest) {
   return apiHandler(async () => {
     const auth = requireAuth(req);
@@ -145,28 +112,9 @@ export async function GET(req: NextRequest) {
       ordersCol.countDocuments({ userId }),
     ]);
 
-    const data = orders.map((o) => ({
-      id: o._id.toString(),
-      orderNumber: o.orderNumber,
-      status: o.status,
-      totalAmount: centsToDollars(o.totalAmount),
-      subtotal: centsToDollars(o.subtotal),
-      setupFees: centsToDollars(o.setupFees),
-      monthlyTotal: centsToDollars(o.monthlyTotal),
-      items: o.items.map((i) => ({
-        ...i,
-        numberId: i.numberId?.toString(),
-        price: centsToDollars(i.price),
-        setupFee: centsToDollars(i.setupFee),
-        monthlyPrice: centsToDollars(i.monthlyPrice),
-      })),
-      createdAt: o.createdAt.toISOString(),
-      completedAt: o.completedAt?.toISOString() || null,
-    }));
-
     return NextResponse.json({
       success: true,
-      data,
+      data: orders.map((o) => serializeOrder(o as OrderDoc & { _id: ObjectId })),
       pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
     });
   });

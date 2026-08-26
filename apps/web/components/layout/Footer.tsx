@@ -82,7 +82,7 @@ export default function Footer() {
             <Typography variant="subtitle2" sx={{ color: '#fff', mb: 2, fontWeight: 700 }}>Contact</Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, minWidth: 0 }}>
               <EmailIcon sx={{ fontSize: 16, opacity: 0.7, flexShrink: 0 }} />
-              <Typography variant="body2" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>support@numberdepot.com</Typography>
+              <Typography variant="body2" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>support@numberdepot.net</Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
               <PhoneIcon sx={{ fontSize: 16, opacity: 0.7, flexShrink: 0 }} />

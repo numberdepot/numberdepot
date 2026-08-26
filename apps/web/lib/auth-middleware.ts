@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { HttpError } from './http-error';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'numberdepot_jwt_secret_2024';
 
@@ -37,10 +38,9 @@ export function requireAdmin(req: NextRequest): AuthPayload {
   return payload;
 }
 
-export class AuthError extends Error {
-  status: number;
+export class AuthError extends HttpError {
   constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
+    super(message, status);
+    this.name = 'AuthError';
   }
 }

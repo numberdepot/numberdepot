@@ -1,45 +1,111 @@
+# NumberDepot — VPS deployment
+#
+# Reads values from a .env file sitting next to this file. Start from
+# .env.docker: cp .env.docker .env, then fill it in.
+#
+#   docker compose up -d --build
+#   docker compose --profile proxy up -d --build   # also runs Caddy for TLS
+
 services:
-  # MongoDB Database
+  # ── MongoDB ──
   mongo:
     image: mongo:8
     container_name: numberdepot-db
     restart: unless-stopped
-    ports:
-      - "27017:27017"
+    # NOT published to the host. Docker publishes ports by writing iptables
+    # rules that bypass UFW, so "27017:27017" on a VPS exposes the database to
+    # the whole internet. `web` reaches it over the private compose network by
+    # the service name. To inspect it from the VPS itself, either exec into the
+    # container or temporarily uncomment the loopback-bound mapping below.
+    # ports:
+    #   - "127.0.0.1:27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-changeme_strong_password}
-      MONGO_INITDB_DATABASE: numberdepot
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:?set MONGO_USER in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:?set MONGO_PASS in .env}
     volumes:
       - mongo_data:/data/db
+      # Drop a dump here and mongorestore can read it from inside the container.
+      - ./backup:/backup
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
+    networks:
+      - internal
 
-  # Next.js App
+  # ── Next.js app ──
   web:
     build:
       context: .
       dockerfile: Dockerfile
+      # Only NEXT_PUBLIC_* belongs here — Next inlines these into the browser
+      # bundle at build time. Secrets are runtime-only (see `environment`).
       args:
-        MONGODB_URI: mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-changeme_strong_password}@mongo:27017/numberdepot?authSource=admin
-        RESEND_API_KEY: ${RESEND_API_KEY}
-        JWT_SECRET: ${JWT_SECRET}
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://numberdepot.net}
+        NEXT_PUBLIC_AUTHORIZENET_ENV: ${NEXT_PUBLIC_AUTHORIZENET_ENV:-sandbox}
+        NEXT_PUBLIC_AUTHORIZENET_CLIENT_KEY: ${NEXT_PUBLIC_AUTHORIZENET_CLIENT_KEY}
+        NEXT_PUBLIC_AUTHORIZENET_API_LOGIN_ID: ${NEXT_PUBLIC_AUTHORIZENET_API_LOGIN_ID}
     container_name: numberdepot-web
     restart: unless-stopped
     ports:
+      # With the proxy profile, bind to loopback instead so only Caddy can
+      # reach it: "127.0.0.1:3000:3000"
       - "${PORT:-3000}:3000"
     environment:
-      MONGODB_URI: mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-changeme_strong_password}@mongo:27017/numberdepot?authSource=admin
+      # authSource=admin is required because the user is created in the admin
+      # database by MONGO_INITDB_ROOT_*.
+      MONGODB_URI: mongodb://${MONGO_USER}:${MONGO_PASS}@mongo:27017/numberdepot?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       RESEND_API_KEY: ${RESEND_API_KEY}
-      JWT_SECRET: ${JWT_SECRET}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-NumberDepot <noreply@numberdepot.net>}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://numberdepot.net}
+      # ── NumberBarn ──
+      NUMBERBARN_API_TOKEN: ${NUMBERBARN_API_TOKEN}
+      NUMBERBARN_MARKUP: ${NUMBERBARN_MARKUP:-15}
+      # ── Authorize.Net (server side — secret) ──
+      AUTHORIZENET_ENV: ${AUTHORIZENET_ENV:-sandbox}
+      AUTHORIZENET_API_LOGIN_ID: ${AUTHORIZENET_API_LOGIN_ID}
+      AUTHORIZENET_TRANSACTION_KEY: ${AUTHORIZENET_TRANSACTION_KEY}
+      AUTHORIZENET_SIGNATURE_KEY: ${AUTHORIZENET_SIGNATURE_KEY}
+      # Re-declared at runtime so a container restart picks up a changed value
+      # for anything read server-side; the browser bundle still uses the
+      # build-time value above.
+      NEXT_PUBLIC_AUTHORIZENET_ENV: ${NEXT_PUBLIC_AUTHORIZENET_ENV:-sandbox}
+      NEXT_PUBLIC_AUTHORIZENET_CLIENT_KEY: ${NEXT_PUBLIC_AUTHORIZENET_CLIENT_KEY}
+      NEXT_PUBLIC_AUTHORIZENET_API_LOGIN_ID: ${NEXT_PUBLIC_AUTHORIZENET_API_LOGIN_ID}
     depends_on:
       mongo:
         condition: service_healthy
+    networks:
+      - internal
+
+  # ── Optional: TLS termination ──
+  # Only starts with `--profile proxy`. Point numberdepot.net's A record at the
+  # VPS first; Caddy then obtains and renews a certificate automatically.
+  caddy:
+    image: caddy:2-alpine
+    container_name: numberdepot-proxy
+    restart: unless-stopped
+    profiles: ["proxy"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    networks:
+      - internal
 
 volumes:
   mongo_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
+    driver: bridge
