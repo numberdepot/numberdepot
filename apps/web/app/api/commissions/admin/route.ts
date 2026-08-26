@@ -14,6 +14,8 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, parseInt(params.get('page') || '1'));
     const limit = Math.min(100, Math.max(1, parseInt(params.get('limit') || '20')));
     const skip = (page - 1) * limit;
+    const dateFrom = params.get('dateFrom');
+    const dateTo = params.get('dateTo');
 
     const db = await getDb();
     const orders = db.collection('orders');
@@ -30,6 +32,12 @@ export async function GET(req: NextRequest) {
     } else {
       // All — only orders that generate commissions
       filter.status = { $in: ['pending', 'processing', 'completed', 'failed', 'refunded'] };
+    }
+
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom + 'T00:00:00.000Z');
+      if (dateTo) filter.createdAt.$lte = new Date(dateTo + 'T23:59:59.999Z');
     }
 
     const settings = db.collection('settings');

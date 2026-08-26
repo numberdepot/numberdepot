@@ -47,19 +47,26 @@ export default function AdminFulfillmentPage() {
   const [loading, setLoading] = useState(true);
   const [state, setState] = useState('pending');
   const [working, setWorking] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const { showSnackbar } = useSnackbar();
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get<FulfillmentRow[]>(`/admin/fulfillment?state=${state}&limit=100`);
+      const params = new URLSearchParams();
+      params.set('state', state);
+      params.set('limit', '100');
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
+      const res = await api.get<FulfillmentRow[]>(`/admin/fulfillment?${params}`);
       setRows(res.data || []);
     } catch (err) {
       showSnackbar(err instanceof Error ? err.message : 'Failed to load queue', 'error');
     } finally {
       setLoading(false);
     }
-  }, [state, showSnackbar]);
+  }, [state, dateFrom, dateTo, showSnackbar]);
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
@@ -101,7 +108,7 @@ export default function AdminFulfillmentPage() {
         then mark it delivered here — that activates it in the buyer&apos;s dashboard and emails them.
       </Alert>
 
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           select
           size="small"
@@ -114,6 +121,33 @@ export default function AdminFulfillmentPage() {
           <MenuItem value="done">Completed &amp; failed</MenuItem>
           <MenuItem value="all">All</MenuItem>
         </TextField>
+        <TextField
+          label="From Date"
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          size="small"
+          sx={{ minWidth: 160 }}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        <TextField
+          label="To Date"
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          size="small"
+          sx={{ minWidth: 160 }}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        {(dateFrom || dateTo) && (
+          <Button
+            size="small"
+            onClick={() => { setDateFrom(''); setDateTo(''); }}
+            sx={{ textTransform: 'none', color: '#E53935', fontWeight: 600 }}
+          >
+            Clear Dates
+          </Button>
+        )}
       </Box>
 
       <Card sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>

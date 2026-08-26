@@ -10,10 +10,17 @@ export async function GET(req: NextRequest) {
 
     const params = req.nextUrl.searchParams;
     const status = params.get('status');
+    const dateFrom = params.get('dateFrom');
+    const dateTo = params.get('dateTo');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: Record<string, any> = {};
     if (status) filter.status = status;
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom + 'T00:00:00.000Z');
+      if (dateTo) filter.createdAt.$lte = new Date(dateTo + 'T23:59:59.999Z');
+    }
 
     const col = await getOrdersCollection();
     const orders = await col.find(filter).sort({ createdAt: -1 }).limit(50000).toArray();

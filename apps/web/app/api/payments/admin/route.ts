@@ -23,11 +23,20 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
     const status = params.get('status');
     const search = params.get('q')?.trim();
+    const dateFrom = params.get('dateFrom');
+    const dateTo = params.get('dateTo');
 
     const col = await getPaymentsCollection();
 
     const filter: Record<string, unknown> = {};
     if (status && status !== 'all') filter.status = status;
+    if (dateFrom || dateTo) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const dateFilter: any = {};
+      if (dateFrom) dateFilter.$gte = new Date(dateFrom + 'T00:00:00.000Z');
+      if (dateTo) dateFilter.$lte = new Date(dateTo + 'T23:59:59.999Z');
+      filter.createdAt = dateFilter;
+    }
 
     if (search) {
       const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

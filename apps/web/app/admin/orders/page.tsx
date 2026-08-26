@@ -159,6 +159,8 @@ export default function AdminOrdersPage() {
   const [limit, setLimit] = useState(25);
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const { showSnackbar } = useSnackbar();
 
@@ -169,6 +171,8 @@ export default function AdminOrdersPage() {
       params.set('page', String(page + 1));
       params.set('limit', String(limit));
       if (statusFilter) params.set('status', statusFilter);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
 
       const res = await api.get<Order[]>(`/orders/admin/all?${params}`);
       if (res.data) setOrders(res.data);
@@ -179,7 +183,7 @@ export default function AdminOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, statusFilter, showSnackbar]);
+  }, [page, limit, statusFilter, dateFrom, dateTo, showSnackbar]);
 
   useEffect(() => {
     fetchOrders();
@@ -202,6 +206,8 @@ export default function AdminOrdersPage() {
           onClick={() => {
             const params = new URLSearchParams();
             if (statusFilter) params.set('status', statusFilter);
+            if (dateFrom) params.set('dateFrom', dateFrom);
+            if (dateTo) params.set('dateTo', dateTo);
             const token = localStorage.getItem('token');
             fetch(`/api/orders/admin/export?${params}`, {
               headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -230,7 +236,7 @@ export default function AdminOrdersPage() {
       </Box>
 
       {/* Filters */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           select
           label="Status"
@@ -246,6 +252,33 @@ export default function AdminOrdersPage() {
           <MenuItem value="cancelled">Cancelled</MenuItem>
           <MenuItem value="refunded">Refunded</MenuItem>
         </TextField>
+        <TextField
+          label="From Date"
+          type="date"
+          value={dateFrom}
+          onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
+          size="small"
+          sx={{ minWidth: 160 }}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        <TextField
+          label="To Date"
+          type="date"
+          value={dateTo}
+          onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
+          size="small"
+          sx={{ minWidth: 160 }}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        {(dateFrom || dateTo) && (
+          <Button
+            size="small"
+            onClick={() => { setDateFrom(''); setDateTo(''); setPage(0); }}
+            sx={{ textTransform: 'none', color: '#E53935', fontWeight: 600 }}
+          >
+            Clear Dates
+          </Button>
+        )}
       </Box>
 
       {/* Table */}

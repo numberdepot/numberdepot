@@ -17,6 +17,7 @@ import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import Skeleton from '@mui/material/Skeleton';
+import Button from '@mui/material/Button';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -50,6 +51,8 @@ export default function AdminCommissionsPage() {
   const [loading, setLoading] = useState(true);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const { showSnackbar } = useSnackbar();
 
@@ -71,6 +74,8 @@ export default function AdminCommissionsPage() {
     try {
       const params = new URLSearchParams();
       if (statusFilter) params.set('status', statusFilter);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
 
       const res = await api.get<Commission[]>(`/commissions/admin?${params}`);
       if (res.data) setCommissions(res.data);
@@ -80,7 +85,7 @@ export default function AdminCommissionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, showSnackbar]);
+  }, [statusFilter, dateFrom, dateTo, showSnackbar]);
 
   useEffect(() => {
     fetchSummary();
@@ -182,7 +187,7 @@ export default function AdminCommissionsPage() {
       </Grid>
 
       {/* Filter */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           select
           label="Status"
@@ -197,6 +202,33 @@ export default function AdminCommissionsPage() {
           <MenuItem value="paid">Paid</MenuItem>
           <MenuItem value="cancelled">Cancelled</MenuItem>
         </TextField>
+        <TextField
+          label="From Date"
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          size="small"
+          sx={{ minWidth: 160 }}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        <TextField
+          label="To Date"
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          size="small"
+          sx={{ minWidth: 160 }}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        {(dateFrom || dateTo) && (
+          <Button
+            size="small"
+            onClick={() => { setDateFrom(''); setDateTo(''); }}
+            sx={{ textTransform: 'none', color: '#E53935', fontWeight: 600 }}
+          >
+            Clear Dates
+          </Button>
+        )}
       </Box>
 
       {/* Commissions Table */}

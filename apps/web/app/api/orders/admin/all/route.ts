@@ -16,10 +16,18 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(100, Math.max(1, parseInt(params.get('limit') || '20')));
     const skip = (page - 1) * limit;
     const status = params.get('status');
+    const dateFrom = params.get('dateFrom');
+    const dateTo = params.get('dateTo');
 
     const col = await getOrdersCollection();
-    const filter: Partial<Pick<OrderDoc, 'status'>> = {};
-    if (status) filter.status = status as OrderDoc['status'];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const filter: Record<string, any> = {};
+    if (status) filter.status = status;
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom + 'T00:00:00.000Z');
+      if (dateTo) filter.createdAt.$lte = new Date(dateTo + 'T23:59:59.999Z');
+    }
 
     // The admin table shows the buyer's name and email, so join the user in
     // rather than sending a bare userId the UI can only render as "N/A".

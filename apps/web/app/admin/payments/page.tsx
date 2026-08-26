@@ -302,6 +302,8 @@ export default function AdminPaymentsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const { showSnackbar } = useSnackbar();
 
   useEffect(() => {
@@ -317,6 +319,8 @@ export default function AdminPaymentsPage() {
       params.set('limit', String(limit));
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (debounced) params.set('q', debounced);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
 
       const res = await api.get<Payment[]>(`/payments/admin?${params}`);
       setPayments(res.data || []);
@@ -328,7 +332,7 @@ export default function AdminPaymentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, statusFilter, debounced, showSnackbar]);
+  }, [page, limit, statusFilter, debounced, dateFrom, dateTo, showSnackbar]);
 
   useEffect(() => { fetchPayments(); }, [fetchPayments]);
 
@@ -352,7 +356,7 @@ export default function AdminPaymentsPage() {
         </Box>
       )}
 
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           select
           label="Status"
@@ -374,7 +378,7 @@ export default function AdminPaymentsPage() {
           placeholder="Email, name, order, number, transaction ID…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          sx={{ minWidth: 320, flex: 1 }}
+          sx={{ minWidth: 280, flex: 1 }}
           slotProps={{
             input: {
               startAdornment: (
@@ -385,6 +389,33 @@ export default function AdminPaymentsPage() {
             },
           }}
         />
+        <TextField
+          label="From Date"
+          type="date"
+          value={dateFrom}
+          onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
+          size="small"
+          sx={{ minWidth: 160 }}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        <TextField
+          label="To Date"
+          type="date"
+          value={dateTo}
+          onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
+          size="small"
+          sx={{ minWidth: 160 }}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        {(dateFrom || dateTo) && (
+          <Button
+            size="small"
+            onClick={() => { setDateFrom(''); setDateTo(''); setPage(0); }}
+            sx={{ textTransform: 'none', color: '#E53935', fontWeight: 600 }}
+          >
+            Clear Dates
+          </Button>
+        )}
       </Box>
 
       <Card sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>

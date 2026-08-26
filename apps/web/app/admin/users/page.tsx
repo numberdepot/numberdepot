@@ -29,6 +29,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import LockResetIcon from '@mui/icons-material/LockReset';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { api } from '@/lib/api';
 import { useSnackbar } from '@/lib/snackbar';
 
@@ -59,6 +60,11 @@ export default function AdminUsersPage() {
   const [resetDialog, setResetDialog] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [resetting, setResetting] = useState(false);
+
+  // Create Admin dialog state
+  const [createAdminOpen, setCreateAdminOpen] = useState(false);
+  const [adminForm, setAdminForm] = useState({ firstName: '', lastName: '', email: '', password: '' });
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
 
   const { showSnackbar } = useSnackbar();
 
@@ -125,6 +131,31 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleCreateAdmin = async () => {
+    const { firstName, lastName, email, password } = adminForm;
+    if (!firstName || !lastName || !email || !password) {
+      showSnackbar('All fields are required', 'error');
+      return;
+    }
+    if (password.length < 6) {
+      showSnackbar('Password must be at least 6 characters', 'error');
+      return;
+    }
+    setCreatingAdmin(true);
+    try {
+      await api.post('/admin/create-admin', { firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), password });
+      showSnackbar('Admin account created successfully', 'success');
+      setCreateAdminOpen(false);
+      setAdminForm({ firstName: '', lastName: '', email: '', password: '' });
+      fetchUsers();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create admin';
+      showSnackbar(message, 'error');
+    } finally {
+      setCreatingAdmin(false);
+    }
+  };
+
   const openMenu = (event: React.MouseEvent<HTMLElement>, user: User) => {
     setAnchorEl(event.currentTarget);
     setSelectedUser(user);
@@ -152,13 +183,30 @@ export default function AdminUsersPage() {
 
   return (
     <Box>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, color: '#1a1a2e' }}>
-          Users Management
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-          All registered users (buyers, sellers, admins). View profiles, change roles, activate/deactivate accounts.
-        </Typography>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 700, color: '#1a1a2e' }}>
+            Users Management
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+            All registered users (buyers, sellers, admins). View profiles, change roles, activate/deactivate accounts.
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          startIcon={<PersonAddIcon />}
+          onClick={() => setCreateAdminOpen(true)}
+          sx={{
+            bgcolor: '#002664',
+            '&:hover': { bgcolor: '#001a45' },
+            textTransform: 'none',
+            fontWeight: 600,
+            borderRadius: 2,
+            px: 3,
+          }}
+        >
+          Create Admin
+        </Button>
       </Box>
 
       {/* Filters */}
@@ -382,6 +430,71 @@ export default function AdminUsersPage() {
             sx={{ bgcolor: '#002664', '&:hover': { bgcolor: '#001a45' } }}
           >
             {resetting ? 'Resetting...' : 'Reset Password'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create Admin Dialog */}
+      <Dialog open={createAdminOpen} onClose={() => { if (!creatingAdmin) { setCreateAdminOpen(false); setAdminForm({ firstName: '', lastName: '', email: '', password: '' }); } }} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600 }}>Create Admin Account</DialogTitle>
+        <DialogContent sx={{ pt: '16px !important' }}>
+          <Typography variant="body2" sx={{ mb: 2.5, color: 'text.secondary' }}>
+            Create a new admin account. The admin will be able to log in immediately with the credentials you set.
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="First Name"
+                value={adminForm.firstName}
+                onChange={(e) => setAdminForm({ ...adminForm, firstName: e.target.value })}
+                fullWidth
+                autoFocus
+              />
+              <TextField
+                label="Last Name"
+                value={adminForm.lastName}
+                onChange={(e) => setAdminForm({ ...adminForm, lastName: e.target.value })}
+                fullWidth
+              />
+            </Box>
+            <TextField
+              label="Email"
+              type="email"
+              value={adminForm.email}
+              onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Password"
+              type="password"
+              value={adminForm.password}
+              onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
+              fullWidth
+              helperText="Minimum 6 characters"
+              error={adminForm.password.length > 0 && adminForm.password.length < 6}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={() => { setCreateAdminOpen(false); setAdminForm({ firstName: '', lastName: '', email: '', password: '' }); }}
+            disabled={creatingAdmin}
+            sx={{ textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleCreateAdmin}
+            disabled={creatingAdmin || !adminForm.firstName || !adminForm.lastName || !adminForm.email || adminForm.password.length < 6}
+            sx={{
+              bgcolor: '#002664',
+              '&:hover': { bgcolor: '#001a45' },
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            {creatingAdmin ? 'Creating...' : 'Create Admin'}
           </Button>
         </DialogActions>
       </Dialog>

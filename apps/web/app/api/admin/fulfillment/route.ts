@@ -24,6 +24,8 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, parseInt(params.get('page') || '1'));
     const limit = Math.min(100, Math.max(1, parseInt(params.get('limit') || '25')));
     const skip = (page - 1) * limit;
+    const dateFrom = params.get('dateFrom');
+    const dateTo = params.get('dateTo');
 
     const ordersCol = await getOrdersCollection();
 
@@ -34,10 +36,16 @@ export async function GET(req: NextRequest) {
           ? ['awaiting_fulfillment', 'provisioned', 'failed']
           : ['awaiting_fulfillment'];
 
-    const filter = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const filter: Record<string, any> = {
       status: 'completed' as const,
       items: { $elemMatch: { source: 'numberbarn', fulfillmentStatus: { $in: statuses } } },
     };
+    if (dateFrom || dateTo) {
+      filter.completedAt = {};
+      if (dateFrom) filter.completedAt.$gte = new Date(dateFrom + 'T00:00:00.000Z');
+      if (dateTo) filter.completedAt.$lte = new Date(dateTo + 'T23:59:59.999Z');
+    }
 
     const [orders, total] = await Promise.all([
       ordersCol.find(filter).sort({ completedAt: -1 }).skip(skip).limit(limit).toArray(),

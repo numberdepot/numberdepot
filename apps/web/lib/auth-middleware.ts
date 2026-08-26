@@ -32,7 +32,7 @@ export function requireAuth(req: NextRequest): AuthPayload {
 
 export function requireAdmin(req: NextRequest): AuthPayload {
   const payload = requireAuth(req);
-  if (payload.role !== 'admin') {
+  if (payload.role !== 'admin' && payload.role !== 'super_admin') {
     throw new AuthError('Forbidden', 403);
   }
   return payload;
