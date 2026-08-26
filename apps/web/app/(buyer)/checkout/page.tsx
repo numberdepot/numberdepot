@@ -61,8 +61,6 @@ const US_STATES = [
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: 15 }, (_, i) => String(CURRENT_YEAR + i));
-const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
 
 function money(n: number) {
   return `$${n.toFixed(2)}`;
@@ -94,6 +92,8 @@ export default function CheckoutPage() {
   const setField = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     let value = e.target.value;
     if (key === 'cardNumber') value = value.replace(/[^\d\s]/g, '').slice(0, 23);
+    if (key === 'month') value = value.replace(/\D/g, '').slice(0, 2);
+    if (key === 'year') value = value.replace(/\D/g, '').slice(0, 4);
     if (key === 'cardCode') value = value.replace(/\D/g, '').slice(0, 4);
     if (key === 'zip') value = value.replace(/[^\d-]/g, '').slice(0, 10);
     setForm((f) => ({ ...f, [key]: value }));
@@ -147,8 +147,11 @@ export default function CheckoutPage() {
     state: !form.state.trim(),
     zip: !/^\d{5}(-\d{4})?$/.test(form.zip),
     cardNumber: cardDigits.length < 13 || cardDigits.length > 19,
-    month: !form.month,
-    year: !form.year,
+    month: !/^(0[1-9]|1[0-2])$/.test(form.month),
+    year: (() => {
+      const y = Number(form.year);
+      return form.year.length !== 4 || y < CURRENT_YEAR || y > CURRENT_YEAR + 20;
+    })(),
     cardCode: form.cardCode.length < 3,
   };
   const formValid = !Object.values(invalid).some(Boolean);
@@ -352,18 +355,20 @@ export default function CheckoutPage() {
                       slotProps={{ htmlInput: { inputMode: 'numeric', autoComplete: 'cc-number' } }} required />
                   </Grid>
                   <Grid size={{ xs: 4 }}>
-                    <TextField select label="Month" fullWidth value={form.month}
+                    <TextField label="MM" fullWidth value={form.month}
                       onChange={setField('month')} onBlur={() => setTouched((t) => ({ ...t, month: true }))}
-                      error={touched.month && invalid.month} required>
-                      {MONTHS.map((m) => <MenuItem key={m} value={m}>{m}</MenuItem>)}
-                    </TextField>
+                      error={touched.month && invalid.month}
+                      placeholder="01"
+                      helperText={touched.month && invalid.month ? '01–12' : ' '}
+                      slotProps={{ htmlInput: { inputMode: 'numeric', autoComplete: 'cc-exp-month', maxLength: 2 } }} required />
                   </Grid>
                   <Grid size={{ xs: 4 }}>
-                    <TextField select label="Year" fullWidth value={form.year}
+                    <TextField label="YYYY" fullWidth value={form.year}
                       onChange={setField('year')} onBlur={() => setTouched((t) => ({ ...t, year: true }))}
-                      error={touched.year && invalid.year} required>
-                      {YEARS.map((y) => <MenuItem key={y} value={y}>{y}</MenuItem>)}
-                    </TextField>
+                      error={touched.year && invalid.year}
+                      placeholder={String(CURRENT_YEAR)}
+                      helperText={touched.year && invalid.year ? 'Invalid year' : ' '}
+                      slotProps={{ htmlInput: { inputMode: 'numeric', autoComplete: 'cc-exp-year', maxLength: 4 } }} required />
                   </Grid>
                   <Grid size={{ xs: 4 }}>
                     <TextField label="CVV" fullWidth value={form.cardCode}
