@@ -358,6 +358,176 @@ export default function HomePage() {
         </Container>
       </Box>
 
+      {/* Telco Cellular Promo Card — matches Trust Stats card style */}
+      <Box
+        sx={{
+          mx: { xs: 2, md: 'auto' },
+          maxWidth: { md: '90%', lg: 1100 },
+          mt: { xs: 2, md: 3 },
+        }}
+      >
+        <Card
+          sx={{
+            borderRadius: { xs: 3, md: 4 },
+            overflow: 'hidden',
+            boxShadow: '0 8px 40px rgba(10,79,104,0.12)',
+            border: '1px solid rgba(10,79,104,0.08)',
+            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: '0 16px 56px rgba(10,79,104,0.18)',
+            },
+          }}
+        >
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, minHeight: { md: 160 } }}>
+            {/* Left — dark branding strip */}
+            <Box
+              sx={{
+                background: 'linear-gradient(160deg, #0A4F68 0%, #083d54 100%)',
+                px: { xs: 3, md: 4 },
+                py: { xs: 3, md: 0 },
+                display: 'flex',
+                flexDirection: { xs: 'row', md: 'column' },
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: { xs: 2, md: 1.5 },
+                minWidth: { md: 150 },
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Subtle pattern */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  opacity: 0.06,
+                  backgroundImage: 'radial-gradient(circle at 30% 50%, #fff 1px, transparent 1px)',
+                  backgroundSize: '20px 20px',
+                  pointerEvents: 'none',
+                }}
+              />
+              <Box
+                component="img"
+                src="/images/telco-logo.png"
+                alt="Telco Cellular"
+                sx={{
+                  height: { xs: 40, md: 52 },
+                  width: 'auto',
+                  filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.3))',
+                  position: 'relative',
+                  zIndex: 1,
+                }}
+              />
+              <Typography
+                sx={{
+                  color: '#4dd9ff',
+                  fontWeight: 800,
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.2em',
+                  textTransform: 'uppercase',
+                  position: 'relative',
+                  zIndex: 1,
+                }}
+              >
+                Telco Cellular
+              </Typography>
+            </Box>
+
+            {/* Right — white content area */}
+            <Box sx={{ flex: 1, p: { xs: 3, sm: 3.5, md: 4 }, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, gap: { xs: 2.5, md: 4 } }}>
+              {/* Info */}
+              <Box sx={{ flex: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontWeight: 800,
+                      color: '#1a1a2e',
+                      fontSize: { xs: '1.15rem', sm: '1.3rem', md: '1.4rem' },
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    Turn Your Number Into{' '}
+                    <Box component="span" sx={{ color: '#0A4F68' }}>Cellular Service</Box>
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, mb: 1.5 }}>
+                  <Typography sx={{ fontWeight: 900, fontSize: { xs: '2rem', md: '2.4rem' }, color: '#0A4F68', lineHeight: 1 }}>
+                    $19
+                  </Typography>
+                  <Typography sx={{ color: 'text.secondary', fontSize: '0.95rem', fontWeight: 500 }}>
+                    /month
+                  </Typography>
+                  <Chip
+                    label="NOT A PENNY MORE"
+                    size="small"
+                    sx={{
+                      ml: 1,
+                      bgcolor: '#E5393510',
+                      color: '#E53935',
+                      fontWeight: 800,
+                      fontSize: '0.6rem',
+                      letterSpacing: '0.06em',
+                      height: 22,
+                    }}
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', gap: 2.5, flexWrap: 'wrap' }}>
+                  {[
+                    { icon: <PhoneIcon sx={{ fontSize: 16 }} />, text: 'Unlimited Talk' },
+                    { icon: <CheckCircleIcon sx={{ fontSize: 16 }} />, text: 'Unlimited Text' },
+                    { icon: <SpeedIcon sx={{ fontSize: 16 }} />, text: 'Unlimited Data' },
+                  ].map((item) => (
+                    <Box key={item.text} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box sx={{ color: '#0A4F68' }}>{item.icon}</Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '0.82rem' }}>
+                        {item.text}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+
+              {/* CTA */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+                <Button
+                  href="https://telcocellular.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="contained"
+                  size="large"
+                  endIcon={<ArrowForwardIcon />}
+                  sx={{
+                    bgcolor: '#0A4F68',
+                    color: '#fff',
+                    fontWeight: 700,
+                    px: 4,
+                    py: 1.4,
+                    fontSize: '0.95rem',
+                    borderRadius: 3,
+                    whiteSpace: 'nowrap',
+                    textTransform: 'none',
+                    boxShadow: '0 4px 16px rgba(10,79,104,0.25)',
+                    '&:hover': {
+                      bgcolor: '#083d54',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 8px 28px rgba(10,79,104,0.3)',
+                    },
+                    transition: 'all 0.25s ease',
+                  }}
+                >
+                  Learn More
+                </Button>
+                <Typography sx={{ color: 'text.disabled', fontSize: '0.7rem' }}>
+                  telcocellular.com
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Card>
+      </Box>
+
       {/* Featured Numbers Section */}
       <Container maxWidth="lg" sx={{ py: { xs: 8, md: 12 } }}>
         <Box sx={{ textAlign: 'center', mb: 6 }} className="reveal">
@@ -756,137 +926,6 @@ export default function HomePage() {
               </Grid>
             ))}
           </Grid>
-        </Container>
-      </Box>
-
-      {/* Telco Cellular Promo Section */}
-      <Box sx={{ py: { xs: 6, md: 10 } }}>
-        <Container maxWidth="md">
-          <Card
-            className="card-lift"
-            sx={{
-              borderRadius: 4,
-              overflow: 'hidden',
-              border: '2px solid #145C76',
-              boxShadow: '0 8px 40px rgba(10,79,104,0.15)',
-            }}
-          >
-            <Box
-              sx={{
-                background: 'linear-gradient(135deg, #0A4F68 0%, #084860 60%, #0d6a8a 100%)',
-                p: { xs: 3, sm: 4, md: 5 },
-                display: 'flex',
-                flexDirection: { xs: 'column', md: 'row' },
-                alignItems: 'center',
-                gap: { xs: 3, md: 5 },
-              }}
-            >
-              {/* Telco Logo & Branding */}
-              <Box sx={{ textAlign: 'center', flexShrink: 0 }}>
-                <Box
-                  component="img"
-                  src="/images/telco-logo.png"
-                  alt="Telco Cellular"
-                  sx={{
-                    height: { xs: 60, md: 80 },
-                    width: 'auto',
-                    mb: 2,
-                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))',
-                  }}
-                />
-                <Chip
-                  label="TELCO"
-                  sx={{
-                    bgcolor: '#fff',
-                    color: '#0A4F68',
-                    fontWeight: 800,
-                    fontSize: '0.9rem',
-                    letterSpacing: '0.1em',
-                    px: 1,
-                  }}
-                />
-              </Box>
-
-              {/* Content */}
-              <Box sx={{ flex: 1, textAlign: { xs: 'center', md: 'left' } }}>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    color: '#fff',
-                    fontWeight: 800,
-                    mb: 1.5,
-                    fontSize: { xs: '1.4rem', sm: '1.75rem', md: '2rem' },
-                    lineHeight: 1.2,
-                  }}
-                >
-                  Turn Your Number Into{' '}
-                  <Box component="span" sx={{ color: '#4dd9ff' }}>
-                    Cellular Service
-                  </Box>
-                </Typography>
-                <Typography
-                  variant="h3"
-                  sx={{
-                    color: '#fff',
-                    fontWeight: 900,
-                    mb: 0.5,
-                    fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
-                  }}
-                >
-                  $19
-                  <Typography component="span" sx={{ fontSize: '1.2rem', fontWeight: 400, color: 'rgba(255,255,255,0.8)' }}>
-                    /mo
-                  </Typography>
-                </Typography>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    color: '#fff',
-                    fontWeight: 700,
-                    mb: 1,
-                    fontSize: { xs: '1rem', md: '1.15rem' },
-                  }}
-                >
-                  Unlimited Talk, Text &amp; Data
-                </Typography>
-                <Typography
-                  sx={{
-                    color: '#4dd9ff',
-                    fontWeight: 800,
-                    fontSize: { xs: '0.95rem', md: '1.1rem' },
-                    letterSpacing: '0.03em',
-                    mb: 2.5,
-                  }}
-                >
-                  NOT A PENNY MORE!
-                </Typography>
-                <Button
-                  href="https://telcocellular.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="contained"
-                  size="large"
-                  sx={{
-                    bgcolor: '#fff',
-                    color: '#0A4F68',
-                    fontWeight: 800,
-                    px: 4,
-                    py: 1.5,
-                    fontSize: '1.05rem',
-                    borderRadius: 3,
-                    '&:hover': {
-                      bgcolor: '#e0f7ff',
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 6px 24px rgba(0,0,0,0.2)',
-                    },
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  Learn More
-                </Button>
-              </Box>
-            </Box>
-          </Card>
         </Container>
       </Box>
 

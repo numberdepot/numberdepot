@@ -73,30 +73,40 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** POST /api/admin/numberbarn — Test search */
+/** POST /api/admin/numberbarn — Paginated search */
 export async function POST(req: NextRequest) {
   return apiHandler(async () => {
     requireAdmin(req);
     const body = await req.json();
-    const { areaCode, search, limit = 10 } = body;
+    const { areaCode, search, page = 1, rowsPerPage = 25 } = body;
 
     if (!areaCode && !search) {
       return NextResponse.json({ error: 'Provide areaCode or search term' }, { status: 400 });
     }
 
+    const limit = Math.min(rowsPerPage, 100);
+    const skip = (page - 1) * limit;
+
     const nbResults = await searchNumbers({
       npa: areaCode || undefined,
       search: search || undefined,
-      limit: Math.min(limit, 25),
+      limit,
+      skip,
     });
 
     const formatted = await Promise.all((nbResults || []).map(toOurFormat));
+
+    // Fetch one extra to know if there are more pages
+    const hasMore = formatted.length === limit;
 
     return NextResponse.json({
       success: true,
       data: {
         results: formatted,
         count: formatted.length,
+        hasMore,
+        page,
+        rowsPerPage: limit,
         source: 'numberbarn',
       },
     });

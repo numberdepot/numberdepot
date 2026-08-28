@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
@@ -18,6 +18,7 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import TablePagination from '@mui/material/TablePagination';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -67,9 +68,15 @@ export default function AdminNumberBarnPage() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchDone, setSearchDone] = useState(false);
+  const [nbPage, setNbPage] = useState(0);
+  const [nbRowsPerPage, setNbRowsPerPage] = useState(25);
+  const [nbHasMore, setNbHasMore] = useState(false);
+  const [nbTotalFetched, setNbTotalFetched] = useState(0);
   const [apiToken, setApiToken] = useState('');
   const [savingToken, setSavingToken] = useState(false);
   const { showSnackbar } = useSnackbar();
+  // Keep track of current search params for pagination
+  const searchParamsRef = useRef<{ areaCode?: string; search?: string }>({});
 
   const fetchStatus = useCallback(async () => {
     setLoading(true);
@@ -85,26 +92,45 @@ export default function AdminNumberBarnPage() {
 
   useEffect(() => { fetchStatus(); }, [fetchStatus]);
 
-  const handleTestSearch = async () => {
-    if (!searchAreaCode && !searchTerm) {
-      showSnackbar('Enter area code or search term', 'warning');
-      return;
-    }
+  const fetchPage = useCallback(async (page: number, rowsPerPage: number) => {
+    const params = searchParamsRef.current;
+    if (!params.areaCode && !params.search) return;
     setSearching(true);
-    setSearchDone(false);
     try {
-      const res = await api.post<{ results: SearchResult[]; count: number }>('/admin/numberbarn', {
-        areaCode: searchAreaCode || undefined,
-        search: searchTerm || undefined,
-        limit: 15,
+      const res = await api.post<{ results: SearchResult[]; count: number; hasMore: boolean }>('/admin/numberbarn', {
+        areaCode: params.areaCode,
+        search: params.search,
+        page: page + 1, // API is 1-based
+        rowsPerPage,
       });
       setSearchResults(res.data?.results || []);
+      setNbHasMore(res.data?.hasMore ?? false);
+      // Track how far we've seen: if this page is full and has more, we know at least (page+1)*rowsPerPage exist
+      setNbTotalFetched(prev => {
+        const thisPageEnd = (page + 1) * rowsPerPage;
+        return Math.max(prev, res.data?.hasMore ? thisPageEnd + 1 : thisPageEnd - rowsPerPage + (res.data?.count || 0));
+      });
       setSearchDone(true);
     } catch {
       showSnackbar('Search failed', 'error');
     } finally {
       setSearching(false);
     }
+  }, [showSnackbar]);
+
+  const handleTestSearch = async () => {
+    if (!searchAreaCode && !searchTerm) {
+      showSnackbar('Enter area code or search term', 'warning');
+      return;
+    }
+    searchParamsRef.current = {
+      areaCode: searchAreaCode || undefined,
+      search: searchTerm || undefined,
+    };
+    setNbPage(0);
+    setNbTotalFetched(0);
+    setSearchDone(false);
+    await fetchPage(0, nbRowsPerPage);
   };
 
   const handleSaveToken = async () => {
@@ -409,17 +435,20 @@ export default function AdminNumberBarnPage() {
           {searchDone && (
             <>
               <Divider sx={{ mb: 2 }} />
-              {searchResults.length === 0 ? (
+              {searchResults.length === 0 && nbPage === 0 ? (
                 <Alert severity="info" sx={{ borderRadius: 2 }}>
                   No results found. {!status?.numberbarn.hasToken ? 'NumberBarn API token is not configured.' : 'Try a different area code or search term.'}
                 </Alert>
               ) : (
                 <>
-                  <Typography variant="body2" sx={{ mb: 1.5, fontWeight: 600 }}>
-                    Found {searchResults.length} numbers from NumberBarn (markup applied):
-                  </Typography>
-                  <TableContainer>
-                    <Table size="small">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      Showing {nbPage * nbRowsPerPage + 1}–{nbPage * nbRowsPerPage + searchResults.length} numbers from NumberBarn (markup applied)
+                    </Typography>
+                    {searching && <CircularProgress size={16} />}
+                  </Box>
+                  <TableContainer sx={{ maxHeight: 520, opacity: searching ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                    <Table size="small" stickyHeader>
                       <TableHead>
                         <TableRow>
                           <TableCell sx={{ fontWeight: 700 }}>Number</TableCell>
@@ -464,6 +493,33 @@ export default function AdminNumberBarnPage() {
                       </TableBody>
                     </Table>
                   </TableContainer>
+                  <TablePagination
+                    component="div"
+                    count={nbHasMore ? -1 : nbTotalFetched}
+                    page={nbPage}
+                    onPageChange={(_, p) => {
+                      setNbPage(p);
+                      fetchPage(p, nbRowsPerPage);
+                    }}
+                    rowsPerPage={nbRowsPerPage}
+                    onRowsPerPageChange={(e) => {
+                      const newRows = parseInt(e.target.value, 10);
+                      setNbRowsPerPage(newRows);
+                      setNbPage(0);
+                      setNbTotalFetched(0);
+                      fetchPage(0, newRows);
+                    }}
+                    rowsPerPageOptions={[25, 50, 100]}
+                    labelDisplayedRows={({ from, to }) =>
+                      nbHasMore ? `${from}–${to}` : `${from}–${to} of ${nbTotalFetched}`
+                    }
+                    slotProps={{
+                      actions: {
+                        nextButton: { disabled: searching || !nbHasMore },
+                        previousButton: { disabled: searching || nbPage === 0 },
+                      },
+                    }}
+                  />
                 </>
               )}
             </>

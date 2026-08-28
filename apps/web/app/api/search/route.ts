@@ -100,8 +100,8 @@ export async function GET(req: NextRequest) {
     let data: any[] = results.map((doc) => formatNumberDoc(doc as any));
     let adjustedTotal = total;
 
-    // NumberBarn fallback: only when inventory results < limit AND user searched something
-    if (results.length < limit && (areaCode || q)) {
+    // Always search NumberBarn alongside inventory when user searched something
+    if (areaCode || q) {
       try {
         // Extract a valid NPA (area code) for NumberBarn: only use digits if they look like an area code
         let nbNpa = areaCode || undefined;
@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
         const nbResults = await nbSearch({
           npa: nbNpa,
           search: q && /[a-zA-Z]/.test(q) ? q : undefined,
-          limit: limit - results.length,
+          limit: 100,
           priceMin: priceMin ? dollarsToCents(parseFloat(priceMin)) : undefined,
           priceMax: priceMax ? dollarsToCents(parseFloat(priceMax)) : undefined,
         });
@@ -132,10 +132,11 @@ export async function GET(req: NextRequest) {
         const existingNumbers = new Set(results.map((r) => (r as any).number));
         const unique = nbFormatted.filter((n) => !existingNumbers.has(n.rawNumber));
 
+        // Our inventory first, then NumberBarn
         data = [...data, ...unique];
         adjustedTotal += unique.length;
       } catch (err) {
-        console.error('[Search] NumberBarn fallback failed:', err);
+        console.error('[Search] NumberBarn search failed:', err);
         // Graceful degradation — just show inventory results
       }
     }

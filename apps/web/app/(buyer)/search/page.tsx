@@ -121,7 +121,7 @@ function SearchPageContent() {
       if (priceMax) params.set('price_max', priceMax);
       if (sort) params.set('sort', sort);
       params.set('page', String(page));
-      params.set('limit', '12');
+      params.set('limit', '24');
 
       const res: ApiResponse<PhoneNumber[]> = await api.get(`/search?${params.toString()}`);
       setNumbers(res.data || []);
@@ -438,7 +438,7 @@ function SearchPageContent() {
         {/* Number Grid */}
         <Grid container spacing={2.5}>
           {loading
-            ? Array.from({ length: 12 }).map((_, i) => (
+            ? Array.from({ length: 24 }).map((_, i) => (
                 <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
                   <Card>
                     <CardContent>
