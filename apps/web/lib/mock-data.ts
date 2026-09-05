@@ -621,7 +621,7 @@ export const MOCK_ADMIN_COMMISSIONS = [
 // ── Admin: Settings ─────────────────────────────────────────────────────────
 export const MOCK_ADMIN_SETTINGS: Record<string, string> = {
   siteName: 'NumberDepot',
-  supportEmail: 'support@numberdepot.net',
+  supportEmail: 'support@numberdepotinc.com',
   supportPhone: '(800) 555-6867',
   defaultCommissionRate: '10',
   minOfferPercentage: '50',

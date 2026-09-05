@@ -43,7 +43,7 @@ services:
       # Only NEXT_PUBLIC_* belongs here — Next inlines these into the browser
       # bundle at build time. Secrets are runtime-only (see `environment`).
       args:
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://numberdepot.net}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://numberdepotinc.com}
         NEXT_PUBLIC_AUTHORIZENET_ENV: ${NEXT_PUBLIC_AUTHORIZENET_ENV:-sandbox}
         NEXT_PUBLIC_AUTHORIZENET_CLIENT_KEY: ${NEXT_PUBLIC_AUTHORIZENET_CLIENT_KEY}
         NEXT_PUBLIC_AUTHORIZENET_API_LOGIN_ID: ${NEXT_PUBLIC_AUTHORIZENET_API_LOGIN_ID}
@@ -59,8 +59,8 @@ services:
       MONGODB_URI: mongodb://${MONGO_USER}:${MONGO_PASS}@mongo:27017/numberdepot?authSource=admin
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       RESEND_API_KEY: ${RESEND_API_KEY}
-      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-NumberDepot <noreply@numberdepot.net>}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://numberdepot.net}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-NumberDepot <noreply@numberdepotinc.com>}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://numberdepotinc.com}
       # ── NumberBarn ──
       NUMBERBARN_API_TOKEN: ${NUMBERBARN_API_TOKEN}
       NUMBERBARN_MARKUP: ${NUMBERBARN_MARKUP:-15}
@@ -82,7 +82,7 @@ services:
       - internal
 
   # ── Optional: TLS termination ──
-  # Only starts with `--profile proxy`. Point numberdepot.net's A record at the
+  # Only starts with `--profile proxy`. Point numberdepotinc.com's A record at the
   # VPS first; Caddy then obtains and renews a certificate automatically.
   caddy:
     image: caddy:2-alpine

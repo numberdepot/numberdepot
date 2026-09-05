@@ -277,7 +277,7 @@ export default function FAQPage() {
             Our support team is here to help. Reach out and we will get back to you within 24 hours.
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button variant="contained" color="primary" size="large" href="mailto:support@numberdepot.net">
+            <Button variant="contained" color="primary" size="large" href="mailto:support@numberdepotinc.com">
               Contact Support
             </Button>
             <Button component={Link} href="/search" variant="outlined" size="large">

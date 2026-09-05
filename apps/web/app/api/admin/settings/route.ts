@@ -5,7 +5,7 @@ import { apiHandler } from '@/lib/api-handler';
 
 const DEFAULT_SETTINGS: Record<string, unknown> = {
   siteName: 'NumberDepot',
-  supportEmail: 'support@numberdepot.net',
+  supportEmail: 'support@numberdepotinc.com',
   supportPhone: '(800) 555-0199',
   defaultCommissionRate: 10,
   numberbarnMarkup: 15,

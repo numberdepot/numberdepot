@@ -170,4 +170,4 @@ never moves money.
 3. **Recurring billing** — the monthly plans (park $2.99 / forward $6.99 / unlimited $19.99 / business $9.99) are collected as *information* but nothing charges them monthly. Recommended: CIM customer profiles created from the same Accept.js nonce, plus a monthly cron — not ARB, because plans are per-number and changeable.
 4. **`NUMBERBARN_API_TOKEN`** is still unset, so the NumberBarn search fallback is inert.
 5. **Refund policy** for numbers — needed before the refund path is exposed to buyers rather than admins.
-6. `lib/resend.ts` still sends from `noreply@devsoumyajit.in`. Set `RESEND_FROM_EMAIL=NumberDepot <noreply@numberdepot.net>` once the domain is verified in Resend.
+6. `lib/resend.ts` still sends from `noreply@devsoumyajit.in`. Set `RESEND_FROM_EMAIL=NumberDepot <noreply@numberdepotinc.com>` once the domain is verified in Resend.

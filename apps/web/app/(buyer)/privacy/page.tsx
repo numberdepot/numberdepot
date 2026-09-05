@@ -44,7 +44,7 @@ export default function PrivacyPage() {
 
             <Typography variant="h6" sx={{ mb: 2 }}>Contact Us</Typography>
             <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-              If you have questions about this Privacy Policy, please contact us at support@numberdepot.net.
+              If you have questions about this Privacy Policy, please contact us at support@numberdepotinc.com.
             </Typography>
           </CardContent>
         </Card>

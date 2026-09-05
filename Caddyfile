@@ -4,7 +4,7 @@
 # Caddy obtains and renews a Let's Encrypt certificate automatically, so the DNS
 # A record for the domain must already point at this VPS before starting it.
 
-numberdepot.net, www.numberdepot.net {
+numberdepotinc.com, www.numberdepotinc.com {
 	encode zstd gzip
 
 	# The app container is reachable by service name on the compose network.

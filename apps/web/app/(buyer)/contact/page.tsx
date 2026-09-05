@@ -106,7 +106,7 @@ export default function ContactPage() {
                 <EmailIcon sx={{ color: 'primary.main' }} />
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Email</Typography>
-                  <Typography variant="body2" color="text.secondary">support@numberdepot.net</Typography>
+                  <Typography variant="body2" color="text.secondary">support@numberdepotinc.com</Typography>
                 </Box>
               </Box>
 
