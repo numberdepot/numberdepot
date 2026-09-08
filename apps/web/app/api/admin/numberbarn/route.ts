@@ -4,6 +4,8 @@ import { apiHandler } from '@/lib/api-handler';
 import { getSettingsCollection, getNumbersCollection } from '@/lib/collections';
 import { searchNumbers, toOurFormat } from '@/lib/numberbarn';
 
+export const dynamic = 'force-dynamic';
+
 /** GET /api/admin/numberbarn — Status + stats */
 export async function GET(req: NextRequest) {
   return apiHandler(async () => {

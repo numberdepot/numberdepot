@@ -4,6 +4,9 @@ import { apiHandler } from '@/lib/api-handler';
 import { formatNumberDoc, dollarsToCents } from '@/lib/utils/pricing';
 import { searchNumbers as nbSearch, toOurFormat } from '@/lib/numberbarn';
 
+// Prevent Next.js from caching this route
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   return apiHandler(async () => {
     const params = req.nextUrl.searchParams;
@@ -118,13 +121,17 @@ export async function GET(req: NextRequest) {
           // For 4-9 digits, don't guess area code — it could be partial number
         }
 
-        const nbResults = await nbSearch({
+        const nbParams = {
           npa: nbNpa,
           search: q && /[a-zA-Z]/.test(q) ? q : undefined,
           limit: 100,
           priceMin: priceMin ? dollarsToCents(parseFloat(priceMin)) : undefined,
           priceMax: priceMax ? dollarsToCents(parseFloat(priceMax)) : undefined,
-        });
+        };
+        console.log('[Search] NumberBarn params:', JSON.stringify(nbParams));
+
+        const nbResults = await nbSearch(nbParams);
+        console.log(`[Search] NumberBarn returned ${nbResults.length} results`);
 
         const nbFormatted = await Promise.all(nbResults.map(toOurFormat));
 

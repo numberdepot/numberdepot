@@ -66,6 +66,7 @@ interface NumberDetail {
   isPortable?: boolean;
   description?: string;
   listingId?: string;
+  offerOnly?: boolean;
   allowOffers?: boolean;
   minimumOffer?: number;
   seller?: {
@@ -384,38 +385,65 @@ export default function NumberDetailPage() {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Pricing
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                  {number.salePrice != null && (
+                {number.offerOnly ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 2,
+                        background: 'linear-gradient(135deg, #002664 0%, #003a99 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <LocalOfferIcon sx={{ color: '#fff', fontSize: 24 }} />
+                    </Box>
                     <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                        Purchase Price (one-time)
+                      <Typography variant="h5" sx={{ fontWeight: 800, color: '#002664', lineHeight: 1.2 }}>
+                        Offer Only
                       </Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 800, color: '#84BD00' }}>
-                        ${number.salePrice.toFixed(2)}
-                      </Typography>
-                    </Box>
-                  )}
-                  {number.licensePrice != null && (
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                        License Price
-                      </Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 800, color: '#4BA0A1' }}>
-                        ${number.licensePrice.toFixed(2)}/mo
+                      <Typography variant="body2" color="text.secondary">
+                        No fixed price — submit your best offer
                       </Typography>
                     </Box>
-                  )}
-                  {activeFees.map((fee) => (
-                    <Box key={fee.id}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                        {fee.label} {fee.perItem ? '(per number)' : '(one-time)'}
-                      </Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary' }}>
-                        ${fee.amount.toFixed(2)}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    {number.salePrice != null && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          Purchase Price (one-time)
+                        </Typography>
+                        <Typography variant="h4" sx={{ fontWeight: 800, color: '#84BD00' }}>
+                          ${number.salePrice.toFixed(2)}
+                        </Typography>
+                      </Box>
+                    )}
+                    {number.licensePrice != null && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          License Price
+                        </Typography>
+                        <Typography variant="h4" sx={{ fontWeight: 800, color: '#4BA0A1' }}>
+                          ${number.licensePrice.toFixed(2)}/mo
+                        </Typography>
+                      </Box>
+                    )}
+                    {activeFees.map((fee) => (
+                      <Box key={fee.id}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          {fee.label} {fee.perItem ? '(per number)' : '(one-time)'}
+                        </Typography>
+                        <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                          ${fee.amount.toFixed(2)}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Grid>
@@ -424,141 +452,214 @@ export default function NumberDetailPage() {
           <Grid size={{ xs: 12, md: 5 }}>
             <Card sx={{ position: { md: 'sticky' }, top: { md: 100 } }}>
               <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Choose Your Plan
-                </Typography>
-
-                <ToggleButtonGroup
-                  value={selectedPlan}
-                  exclusive
-                  onChange={(_, val) => val && setSelectedPlan(val)}
-                  orientation="vertical"
-                  fullWidth
-                  sx={{ mb: 3 }}
-                >
-                  {plans.map((plan) => {
-                    const color = planColors[plan.id] || '#002664';
-                    const icon = planIcons[plan.id] || <PhoneIcon />;
-                    return (
-                      <ToggleButton
-                        key={plan.id}
-                        value={plan.id}
+                {number.offerOnly ? (
+                  <>
+                    <Box
+                      sx={{
+                        textAlign: 'center',
+                        mb: 3,
+                      }}
+                    >
+                      <Box
                         sx={{
-                          py: 2,
-                          px: 2.5,
-                          justifyContent: 'flex-start',
-                          gap: 2,
-                          textAlign: 'left',
-                          textTransform: 'none',
-                          border: '1px solid',
-                          borderColor: selectedPlan === plan.id ? color : 'divider',
-                          bgcolor: selectedPlan === plan.id ? color + '08' : 'transparent',
-                          '&.Mui-selected': {
-                            bgcolor: color + '10',
-                            borderColor: color,
-                            '&:hover': { bgcolor: color + '15' },
-                          },
+                          width: 64,
+                          height: 64,
+                          borderRadius: 3,
+                          background: 'linear-gradient(135deg, #002664 0%, #003a99 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          mx: 'auto',
+                          mb: 2,
                         }}
                       >
-                        <Box sx={{ color }}>{icon}</Box>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                            {plan.title}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {plan.description}
-                          </Typography>
-                        </Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color }}>
-                          ${plan.price.toFixed(2)}/mo
-                        </Typography>
-                      </ToggleButton>
-                    );
-                  })}
-                </ToggleButtonGroup>
-
-                {/* Plan Features */}
-                <Box sx={{ mb: 3, pl: 1 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    {activePlanData?.title || 'Park'} Plan Includes:
-                  </Typography>
-                  {(planFeatures[selectedPlan] || []).map((feature) => (
-                    <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
-                      <CheckCircleIcon sx={{ fontSize: 16, color: planColors[selectedPlan] || '#002664' }} />
+                        <LocalOfferIcon sx={{ color: '#fff', fontSize: 32 }} />
+                      </Box>
+                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+                        Interested in this number?
+                      </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {feature}
+                        Submit your best offer and our team will review it. We typically respond within 24 hours.
                       </Typography>
                     </Box>
-                  ))}
-                </Box>
 
-                <Divider sx={{ my: 2 }} />
+                    <Button
+                      variant="contained"
+                      size="large"
+                      fullWidth
+                      startIcon={<LocalOfferIcon />}
+                      onClick={() => setOfferDialogOpen(true)}
+                      sx={{
+                        py: 1.5,
+                        fontSize: '1.05rem',
+                        fontWeight: 700,
+                        background: 'linear-gradient(135deg, #002664 0%, #003a99 100%)',
+                        color: '#fff',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #003a99 0%, #0050cc 100%)',
+                          color: '#fff',
+                        },
+                      }}
+                    >
+                      Make an Offer
+                    </Button>
+                    {number.minimumOffer != null && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
+                        Minimum offer: ${number.minimumOffer.toFixed(2)}
+                      </Typography>
+                    )}
 
-                {/* Price Summary */}
-                <Box sx={{ mb: 3 }}>
-                  {number.salePrice != null && (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="body2" color="text.secondary">Number Price</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>${number.salePrice.toFixed(2)}</Typography>
+                    <Box sx={{ mt: 3, pt: 2.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                        <CheckCircleIcon sx={{ fontSize: 14, color: '#84BD00' }} /> Multiple users can offer on the same number
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                        <CheckCircleIcon sx={{ fontSize: 14, color: '#84BD00' }} /> You&apos;ll be notified when we respond
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <CheckCircleIcon sx={{ fontSize: 14, color: '#84BD00' }} /> Pay securely online after acceptance
+                      </Typography>
                     </Box>
-                  )}
-                  {activeFees.map((fee) => (
-                    <Box key={fee.id} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="body2" color="text.secondary">{fee.label}</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>${fee.amount.toFixed(2)}</Typography>
-                    </Box>
-                  ))}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                    <Typography variant="body2" color="text.secondary">Monthly ({activePlanData?.title || 'Park'})</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>${(activePlanData?.price || 0).toFixed(2)}/mo</Typography>
-                  </Box>
-                  <Divider sx={{ my: 1.5 }} />
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Due Today</Typography>
-                    <Typography variant="subtitle1" color="primary.main" sx={{ fontWeight: 800 }}>
-                      ${((number.salePrice || 0) + totalFees).toFixed(2)}
+                  </>
+                ) : (
+                  <>
+                    <Typography variant="h6" sx={{ mb: 2 }}>
+                      Choose Your Plan
                     </Typography>
-                  </Box>
-                </Box>
 
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  size="large"
-                  fullWidth
-                  startIcon={<AddShoppingCartIcon />}
-                  onClick={handleAddToCart}
-                  disabled={addingToCart || number.isPurchasable === false}
-                  sx={{ py: 1.5, fontSize: '1.05rem' }}
-                >
-                  {number.isPurchasable === false
-                    ? 'Currently Unavailable'
-                    : addingToCart
-                      ? 'Adding to Cart...'
-                      : 'Add to Cart'}
-                </Button>
-                {number.reservedByOther && (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 0.75 }}>
-                    Someone else is checking out with this number right now.
-                  </Typography>
-                )}
+                    <ToggleButtonGroup
+                      value={selectedPlan}
+                      exclusive
+                      onChange={(_, val) => val && setSelectedPlan(val)}
+                      orientation="vertical"
+                      fullWidth
+                      sx={{ mb: 3 }}
+                    >
+                      {plans.map((plan) => {
+                        const color = planColors[plan.id] || '#002664';
+                        const icon = planIcons[plan.id] || <PhoneIcon />;
+                        return (
+                          <ToggleButton
+                            key={plan.id}
+                            value={plan.id}
+                            sx={{
+                              py: 2,
+                              px: 2.5,
+                              justifyContent: 'flex-start',
+                              gap: 2,
+                              textAlign: 'left',
+                              textTransform: 'none',
+                              border: '1px solid',
+                              borderColor: selectedPlan === plan.id ? color : 'divider',
+                              bgcolor: selectedPlan === plan.id ? color + '08' : 'transparent',
+                              '&.Mui-selected': {
+                                bgcolor: color + '10',
+                                borderColor: color,
+                                '&:hover': { bgcolor: color + '15' },
+                              },
+                            }}
+                          >
+                            <Box sx={{ color }}>{icon}</Box>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                                {plan.title}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {plan.description}
+                              </Typography>
+                            </Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color }}>
+                              ${plan.price.toFixed(2)}/mo
+                            </Typography>
+                          </ToggleButton>
+                        );
+                      })}
+                    </ToggleButtonGroup>
 
-                {number.allowOffers && (
-                  <Button
-                    variant="outlined"
-                    size="large"
-                    fullWidth
-                    startIcon={<LocalOfferIcon />}
-                    onClick={() => setOfferDialogOpen(true)}
-                    sx={{ mt: 1.5, py: 1.5, fontSize: '1.05rem' }}
-                  >
-                    Make an Offer
-                  </Button>
-                )}
-                {number.allowOffers && number.minimumOffer != null && (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 0.75 }}>
-                    Minimum offer: ${number.minimumOffer.toFixed(2)}
-                  </Typography>
+                    {/* Plan Features */}
+                    <Box sx={{ mb: 3, pl: 1 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                        {activePlanData?.title || 'Park'} Plan Includes:
+                      </Typography>
+                      {(planFeatures[selectedPlan] || []).map((feature) => (
+                        <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
+                          <CheckCircleIcon sx={{ fontSize: 16, color: planColors[selectedPlan] || '#002664' }} />
+                          <Typography variant="body2" color="text.secondary">
+                            {feature}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+
+                    <Divider sx={{ my: 2 }} />
+
+                    {/* Price Summary */}
+                    <Box sx={{ mb: 3 }}>
+                      {number.salePrice != null && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="body2" color="text.secondary">Number Price</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>${number.salePrice.toFixed(2)}</Typography>
+                        </Box>
+                      )}
+                      {activeFees.map((fee) => (
+                        <Box key={fee.id} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="body2" color="text.secondary">{fee.label}</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>${fee.amount.toFixed(2)}</Typography>
+                        </Box>
+                      ))}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                        <Typography variant="body2" color="text.secondary">Monthly ({activePlanData?.title || 'Park'})</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>${(activePlanData?.price || 0).toFixed(2)}/mo</Typography>
+                      </Box>
+                      <Divider sx={{ my: 1.5 }} />
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Due Today</Typography>
+                        <Typography variant="subtitle1" color="primary.main" sx={{ fontWeight: 800 }}>
+                          ${((number.salePrice || 0) + totalFees).toFixed(2)}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      size="large"
+                      fullWidth
+                      startIcon={<AddShoppingCartIcon />}
+                      onClick={handleAddToCart}
+                      disabled={addingToCart || number.isPurchasable === false}
+                      sx={{ py: 1.5, fontSize: '1.05rem' }}
+                    >
+                      {number.isPurchasable === false
+                        ? 'Currently Unavailable'
+                        : addingToCart
+                          ? 'Adding to Cart...'
+                          : 'Add to Cart'}
+                    </Button>
+                    {number.reservedByOther && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 0.75 }}>
+                        Someone else is checking out with this number right now.
+                      </Typography>
+                    )}
+
+                    {number.allowOffers && (
+                      <Button
+                        variant="outlined"
+                        size="large"
+                        fullWidth
+                        startIcon={<LocalOfferIcon />}
+                        onClick={() => setOfferDialogOpen(true)}
+                        sx={{ mt: 1.5, py: 1.5, fontSize: '1.05rem' }}
+                      >
+                        Make an Offer
+                      </Button>
+                    )}
+                    {number.allowOffers && number.minimumOffer != null && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 0.75 }}>
+                        Minimum offer: ${number.minimumOffer.toFixed(2)}
+                      </Typography>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>

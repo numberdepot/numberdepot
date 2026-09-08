@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -21,6 +22,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Divider from '@mui/material/Divider';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import PaymentIcon from '@mui/icons-material/Payment';
 import { api } from '@/lib/api';
 import { useSnackbar } from '@/lib/snackbar';
 
@@ -65,12 +67,14 @@ function formatDate(d: string): string {
 }
 
 export default function BuyerOffersPage() {
+  const router = useRouter();
   const { showSnackbar } = useSnackbar();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelDialogOffer, setCancelDialogOffer] = useState<Offer | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [detailOffer, setDetailOffer] = useState<Offer | null>(null);
+  const [payingOffer, setPayingOffer] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<Offer[]>('/offers/sent')
@@ -93,6 +97,23 @@ export default function BuyerOffersPage() {
       showSnackbar('Failed to cancel offer', 'error');
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handlePayNow = async (offer: Offer) => {
+    setPayingOffer(offer.id);
+    try {
+      const res = await api.post<{ id: string }>(`/offers/${offer.id}/checkout`);
+      if (res.data?.id) {
+        router.push(`/checkout?orderId=${res.data.id}&offerId=${offer.id}`);
+      } else {
+        showSnackbar('Failed to create order', 'error');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to start checkout';
+      showSnackbar(msg, 'error');
+    } finally {
+      setPayingOffer(null);
     }
   };
 
@@ -197,6 +218,18 @@ export default function BuyerOffersPage() {
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            {offer.status === 'accepted' && (
+                              <Button
+                                size="small"
+                                variant="contained"
+                                color="secondary"
+                                startIcon={<PaymentIcon sx={{ fontSize: 14 }} />}
+                                onClick={() => handlePayNow(offer)}
+                                disabled={payingOffer === offer.id}
+                              >
+                                {payingOffer === offer.id ? 'Loading...' : 'Pay Now'}
+                              </Button>
+                            )}
                             <Button
                               size="small"
                               variant="outlined"
@@ -204,7 +237,7 @@ export default function BuyerOffersPage() {
                             >
                               Details
                             </Button>
-                            {offer.status === 'pending' && (
+                            {(offer.status === 'pending' || offer.status === 'countered') && (
                               <Button
                                 size="small"
                                 color="error"
@@ -263,11 +296,24 @@ export default function BuyerOffersPage() {
                     <Typography variant="caption" color="text.secondary">
                       {formatDate(offer.createdAt)}
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1.5 }}>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1.5, flexWrap: 'wrap' }}>
+                      {offer.status === 'accepted' && (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="secondary"
+                          fullWidth
+                          startIcon={<PaymentIcon sx={{ fontSize: 14 }} />}
+                          onClick={() => handlePayNow(offer)}
+                          disabled={payingOffer === offer.id}
+                        >
+                          {payingOffer === offer.id ? 'Loading...' : 'Pay Now'}
+                        </Button>
+                      )}
                       <Button size="small" variant="outlined" fullWidth onClick={() => setDetailOffer(offer)}>
                         Details
                       </Button>
-                      {offer.status === 'pending' && (
+                      {(offer.status === 'pending' || offer.status === 'countered') && (
                         <Button size="small" color="error" variant="outlined" fullWidth onClick={() => setCancelDialogOffer(offer)}>
                           Cancel
                         </Button>

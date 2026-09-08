@@ -46,6 +46,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Number is not available for offers' }, { status: 400 });
     }
 
+    // Server-side minimum offer validation
+    if (numberDoc.minimumOffer && offerAmountCents < numberDoc.minimumOffer) {
+      const minDollars = (numberDoc.minimumOffer / 100).toFixed(2);
+      return NextResponse.json(
+        { error: `Minimum offer for this number is $${minDollars}` },
+        { status: 400 }
+      );
+    }
+
     // Check for existing pending offer from this buyer on this number
     const offersColl = await getOffersCollection();
     const existingOffer = await offersColl.findOne({

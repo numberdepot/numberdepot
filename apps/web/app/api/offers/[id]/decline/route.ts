@@ -21,7 +21,7 @@ export async function PUT(
     const offersColl = await getOffersCollection();
     const offer = await offersColl.findOne({ _id: new ObjectId(id) });
     if (!offer) return NextResponse.json({ error: 'Offer not found' }, { status: 404 });
-    if (offer.status !== 'pending') return NextResponse.json({ error: 'Only pending offers can be declined' }, { status: 400 });
+    if (offer.status !== 'pending' && offer.status !== 'countered') return NextResponse.json({ error: 'Only pending or countered offers can be declined' }, { status: 400 });
 
     const db = await getDb();
     const user = await db.collection('users').findOne({ _id: new ObjectId(payload.userId) });

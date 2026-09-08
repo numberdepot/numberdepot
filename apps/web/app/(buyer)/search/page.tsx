@@ -27,6 +27,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import StarIcon from '@mui/icons-material/Star';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import CloseIcon from '@mui/icons-material/Close';
 import { api, ApiResponse } from '@/lib/api';
 import { useCart } from '@/lib/cart';
@@ -51,6 +52,7 @@ interface PhoneNumber {
   fulfillmentDays?: number;
   rawNumber?: string;
   numberbarnTn?: string;
+  offerOnly?: boolean;
 }
 
 function formatPhone(num: string): string {
@@ -533,38 +535,65 @@ function SearchPageContent() {
                           ~{num.fulfillmentDays} day{num.fulfillmentDays !== 1 ? 's' : ''} fulfillment
                         </Typography>
                       )}
-                      <Typography
-                        variant="h6"
-                        sx={{ mt: 1.5, color: '#84BD00', fontWeight: 700, fontSize: '1.1rem' }}
-                      >
-                        {num.salePrice
-                          ? `$${num.salePrice.toFixed(2)}`
-                          : num.licensePrice
-                            ? `$${num.licensePrice.toFixed(2)}/mo`
-                            : 'Contact Us'}
-                      </Typography>
+                      {!num.offerOnly && (
+                        <Typography
+                          variant="h6"
+                          sx={{ mt: 1.5, color: '#84BD00', fontWeight: 700, fontSize: '1.1rem' }}
+                        >
+                          {num.salePrice
+                            ? `$${num.salePrice.toFixed(2)}`
+                            : num.licensePrice
+                              ? `$${num.licensePrice.toFixed(2)}/mo`
+                              : 'Contact Us'}
+                        </Typography>
+                      )}
                     </CardContent>
                     <CardActions sx={{ px: 2, pb: 2, gap: 1 }}>
-                      <Button
-                        component={Link}
-                        href={`/numbers/${num.id}`}
-                        variant="outlined"
-                        size="small"
-                        sx={{ flex: 1 }}
-                      >
-                        Details
-                      </Button>
-                      <Button
-                        variant="contained"
-                        color="secondary"
-                        size="small"
-                        onClick={() => handleAddToCart(num)}
-                        disabled={addingToCart === num.id}
-                        startIcon={<AddShoppingCartIcon sx={{ fontSize: 16 }} />}
-                        sx={{ flex: 1 }}
-                      >
-                        {addingToCart === num.id ? 'Adding...' : 'Add'}
-                      </Button>
+                      {num.offerOnly ? (
+                        <Button
+                          component={Link}
+                          href={`/numbers/${num.id}`}
+                          variant="contained"
+                          size="small"
+                          fullWidth
+                          startIcon={<LocalOfferIcon sx={{ fontSize: 16 }} />}
+                          sx={{
+                            background: 'linear-gradient(135deg, #002664 0%, #003a99 100%)',
+                            color: '#fff',
+                            fontWeight: 700,
+                            py: 0.85,
+                            '&:hover': {
+                              background: 'linear-gradient(135deg, #003a99 0%, #0050cc 100%)',
+                              color: '#fff',
+                            },
+                          }}
+                        >
+                          Make an Offer
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            component={Link}
+                            href={`/numbers/${num.id}`}
+                            variant="outlined"
+                            size="small"
+                            sx={{ flex: 1 }}
+                          >
+                            Details
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            size="small"
+                            onClick={() => handleAddToCart(num)}
+                            disabled={addingToCart === num.id}
+                            startIcon={<AddShoppingCartIcon sx={{ fontSize: 16 }} />}
+                            sx={{ flex: 1 }}
+                          >
+                            {addingToCart === num.id ? 'Adding...' : 'Add'}
+                          </Button>
+                        </>
+                      )}
                     </CardActions>
                   </Card>
                 </Grid>

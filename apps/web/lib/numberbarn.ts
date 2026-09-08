@@ -92,16 +92,45 @@ async function nbFetch<T>(path: string, params?: Record<string, string>): Promis
     }
   }
 
+  const finalUrl = url.toString();
+  console.log(`[NumberBarn] Fetching: ${finalUrl}`);
+
   try {
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const res = await fetch(url.toString(), { headers });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    let res = await fetch(finalUrl, {
+      headers,
+      signal: controller.signal,
+      cache: 'no-store',
+      next: { revalidate: 0 },
+    } as RequestInit);
+
+    clearTimeout(timeoutId);
+
+    // If token is invalid/expired, retry without it — search is public
+    if (res.status === 401 && token) {
+      console.warn('[NumberBarn] Token rejected (401). Retrying without auth — search is public.');
+      delete headers.Authorization;
+      const controller2 = new AbortController();
+      const timeoutId2 = setTimeout(() => controller2.abort(), 15000);
+      res = await fetch(finalUrl, {
+        headers,
+        signal: controller2.signal,
+        cache: 'no-store',
+        next: { revalidate: 0 },
+      } as RequestInit);
+      clearTimeout(timeoutId2);
+    }
 
     if (!res.ok) {
-      console.error(`[NumberBarn] API error ${res.status}: ${await res.text()}`);
+      const body = await res.text();
+      console.error(`[NumberBarn] API error ${res.status}: ${body}`);
       return null;
     }
 
@@ -115,7 +144,10 @@ async function nbFetch<T>(path: string, params?: Record<string, string>): Promis
 export async function searchNumbers(params: NumberBarnSearchParams) {
   const cacheKey = `search:${JSON.stringify(params)}`;
   const cached = getCached<NumberBarnNumber[]>(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    console.log(`[NumberBarn] Cache hit for ${cacheKey}: ${cached.length} results`);
+    return cached;
+  }
 
   const queryParams: Record<string, string> = {};
   if (params.npa) queryParams.npa = params.npa;
@@ -127,7 +159,13 @@ export async function searchNumbers(params: NumberBarnSearchParams) {
 
   const data = await nbFetch<{ data?: NumberBarnNumber[]; numbers?: NumberBarnNumber[] }>('/availableNumbers', queryParams);
   const numbers = data?.data || data?.numbers || [];
-  setCache(cacheKey, numbers);
+
+  console.log(`[NumberBarn] Search returned ${numbers.length} results (data: ${!!data})`);
+
+  // Only cache non-empty results — don't cache failures
+  if (numbers.length > 0) {
+    setCache(cacheKey, numbers);
+  }
   return numbers;
 }
 

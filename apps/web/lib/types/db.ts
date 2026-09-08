@@ -32,6 +32,7 @@ export interface NumberDoc {
   isPremium: boolean;
   allowOffers?: boolean;
   minimumOffer?: number; // cents
+  offerOnly?: boolean;
   features: string[];
   description?: string;
   city?: string;
@@ -109,6 +110,7 @@ export interface OrderDoc {
   paymentId?: string; // gateway transaction id
   paymentRef?: ObjectId; // _id in the payments collection
   paymentStatus?: 'unpaid' | 'paid' | 'declined' | 'held' | 'refunded' | 'voided';
+  offerId?: ObjectId;
   paymentAttempts?: number;
   lastPaymentError?: string;
   billTo?: BillingAddress;

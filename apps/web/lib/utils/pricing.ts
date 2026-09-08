@@ -10,6 +10,10 @@ export function dollarsToCents(dollars: number): number {
 }
 
 export function formatNumberDoc(doc: WithId<NumberDoc>) {
+  // All inventory numbers are offer-only (no fixed price, only "Make an Offer").
+  // NumberBarn numbers keep their normal price/cart flow.
+  const isOfferOnly = doc.source === 'inventory';
+
   return {
     id: doc._id.toString(),
     number: doc.formattedNumber,
@@ -18,9 +22,9 @@ export function formatNumberDoc(doc: WithId<NumberDoc>) {
     areaCode: doc.areaCode,
     numberType: doc.numberType,
     vanityText: doc.vanityText || null,
-    salePrice: centsToDollars(doc.price),
-    basePrice: centsToDollars(doc.price),
-    licensePrice: doc.licensePrice ? centsToDollars(doc.licensePrice) : centsToDollars(doc.price),
+    salePrice: isOfferOnly ? null : centsToDollars(doc.price),
+    basePrice: isOfferOnly ? null : centsToDollars(doc.price),
+    licensePrice: isOfferOnly ? null : (doc.licensePrice ? centsToDollars(doc.licensePrice) : centsToDollars(doc.price)),
     monthlyPrice: centsToDollars(doc.monthlyPrice),
     setupFee: centsToDollars(doc.setupFee),
     source: doc.source,
@@ -34,8 +38,9 @@ export function formatNumberDoc(doc: WithId<NumberDoc>) {
     state: doc.state || '',
     listingId: `lst_${doc._id.toString()}`,
     listingType: doc.price > 0 ? 'sale' : 'license',
-    allowOffers: doc.allowOffers ?? true,
-    minimumOffer: doc.minimumOffer != null ? centsToDollars(doc.minimumOffer) : centsToDollars(Math.round(doc.price * 0.7)),
+    offerOnly: isOfferOnly,
+    allowOffers: isOfferOnly ? true : (doc.allowOffers ?? true),
+    minimumOffer: doc.minimumOffer != null ? centsToDollars(doc.minimumOffer) : (isOfferOnly ? null : centsToDollars(Math.round(doc.price * 0.7))),
     sellerId: null,
     createdAt: doc.createdAt.toISOString(),
     reservedUntil: doc.reservationExpiresAt?.toISOString() || null,

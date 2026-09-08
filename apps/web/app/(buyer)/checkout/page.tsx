@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
@@ -66,11 +66,17 @@ function money(n: number) {
   return `$${n.toFixed(2)}`;
 }
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { items, refreshCart, clearCart } = useCart();
   const { showSnackbar } = useSnackbar();
+
+  // Offer checkout mode: orderId and offerId are passed as URL params
+  const offerOrderId = searchParams.get('orderId');
+  const offerId = searchParams.get('offerId');
+  const isOfferCheckout = !!(offerOrderId && offerId);
 
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -81,7 +87,7 @@ export default function CheckoutPage() {
   const [payError, setPayError] = useState<string | null>(null);
 
   // Reused across retries so a declined card does not leave a trail of orders.
-  const orderIdRef = useRef<string | null>(null);
+  const orderIdRef = useRef<string | null>(offerOrderId);
 
   const [form, setForm] = useState({
     firstName: '', lastName: '', address: '', city: '', state: '', zip: '', country: 'USA',
@@ -99,7 +105,9 @@ export default function CheckoutPage() {
     setForm((f) => ({ ...f, [key]: value }));
   };
 
-  useEffect(() => { refreshCart(); }, [refreshCart]);
+  useEffect(() => {
+    if (!isOfferCheckout) refreshCart();
+  }, [refreshCart, isOfferCheckout]);
 
   // Load Accept.js up front so the first Pay click is not waiting on a script.
   useEffect(() => {
@@ -112,8 +120,41 @@ export default function CheckoutPage() {
       .catch((err) => setAcceptError(err instanceof Error ? err.message : 'Payment library failed to load'));
   }, []);
 
+  // For offer checkout: load order as quote from the pre-created order
+  const fetchOfferOrder = useCallback(async () => {
+    if (!offerOrderId) return;
+    setLoadingQuote(true);
+    setQuoteError(null);
+    try {
+      const res = await api.get<{
+        items: QuoteItem[];
+        feeLines: QuoteFeeLine[];
+        subtotal: number;
+        feesTotal: number;
+        monthlyTotal: number;
+        totalAmount: number;
+      }>(`/orders/${offerOrderId}`);
+      if (res.data) {
+        setQuote({
+          items: res.data.items,
+          feeLines: res.data.feeLines || [],
+          subtotal: res.data.subtotal,
+          feesTotal: res.data.feesTotal || 0,
+          monthlyTotal: res.data.monthlyTotal || 0,
+          totalAmount: res.data.totalAmount,
+        });
+      }
+    } catch (err) {
+      setQuoteError(err instanceof Error ? err.message : 'Could not load order details');
+      setQuote(null);
+    } finally {
+      setLoadingQuote(false);
+    }
+  }, [offerOrderId]);
+
   // Totals always come from the server, never from adding things up here.
   const fetchQuote = useCallback(async () => {
+    if (isOfferCheckout) return;
     if (items.length === 0) { setLoadingQuote(false); return; }
     setLoadingQuote(true);
     setQuoteError(null);
@@ -134,9 +175,15 @@ export default function CheckoutPage() {
     } finally {
       setLoadingQuote(false);
     }
-  }, [items]);
+  }, [items, isOfferCheckout]);
 
-  useEffect(() => { fetchQuote(); }, [fetchQuote]);
+  useEffect(() => {
+    if (isOfferCheckout) {
+      fetchOfferOrder();
+    } else {
+      fetchQuote();
+    }
+  }, [fetchQuote, fetchOfferOrder, isOfferCheckout]);
 
   const cardDigits = form.cardNumber.replace(/\D/g, '');
   const invalid = {
@@ -185,7 +232,7 @@ export default function CheckoutPage() {
       };
 
       // 2. Create the order (server re-prices everything) unless we already
-      //    have a pending one from a previous attempt.
+      //    have a pending one from a previous attempt or an offer checkout.
       if (!orderIdRef.current) {
         const orderRes = await api.post<{ id: string }>('/orders', {
           items: items.map((i) => ({
@@ -212,7 +259,9 @@ export default function CheckoutPage() {
 
       if (!payRes.success) throw new Error('Payment could not be completed');
 
-      await clearCart();
+      if (!isOfferCheckout) {
+        await clearCart();
+      }
       orderIdRef.current = null;
 
       if (payRes.data?.held) {
@@ -229,8 +278,10 @@ export default function CheckoutPage() {
     } catch (err) {
       // A stale or already-consumed order must be rebuilt on the next attempt.
       if (err instanceof ApiError && (err.status === 410 || err.status === 409)) {
-        orderIdRef.current = null;
-        await fetchQuote();
+        if (!isOfferCheckout) {
+          orderIdRef.current = null;
+          await fetchQuote();
+        }
       }
       const message = err instanceof Error ? err.message : 'Payment failed. Please try again.';
       setPayError(message);
@@ -254,7 +305,8 @@ export default function CheckoutPage() {
     );
   }
 
-  if (items.length === 0) {
+  // Only show empty cart for non-offer checkout
+  if (!isOfferCheckout && items.length === 0) {
     return (
       <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Box sx={{ textAlign: 'center' }}>
@@ -270,11 +322,18 @@ export default function CheckoutPage() {
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '80vh' }}>
       <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-        <Button component={Link} href="/cart" startIcon={<ArrowBackIcon />} sx={{ mb: 2 }}>
-          Back to cart
+        <Button
+          component={Link}
+          href={isOfferCheckout ? '/account/offers' : '/cart'}
+          startIcon={<ArrowBackIcon />}
+          sx={{ mb: 2 }}
+        >
+          {isOfferCheckout ? 'Back to offers' : 'Back to cart'}
         </Button>
 
-        <Typography variant="h3" sx={{ mb: 1 }}>Checkout</Typography>
+        <Typography variant="h3" sx={{ mb: 1 }}>
+          {isOfferCheckout ? 'Complete Your Purchase' : 'Checkout'}
+        </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
           Your card details go straight to our payment processor — they never touch our servers.
         </Typography>
@@ -287,7 +346,7 @@ export default function CheckoutPage() {
         {acceptError && <Alert severity="error" sx={{ mb: 3 }}>{acceptError}</Alert>}
         {quoteError && (
           <Alert severity="error" sx={{ mb: 3 }} action={
-            <Button color="inherit" size="small" onClick={fetchQuote}>Retry</Button>
+            <Button color="inherit" size="small" onClick={isOfferCheckout ? fetchOfferOrder : fetchQuote}>Retry</Button>
           }>
             {quoteError}
           </Alert>
@@ -295,7 +354,7 @@ export default function CheckoutPage() {
         {payError && <Alert severity="error" sx={{ mb: 3 }}>{payError}</Alert>}
 
         <Grid container spacing={4}>
-          {/* ── Billing + card ── */}
+          {/* Billing + card */}
           <Grid size={{ xs: 12, md: 7 }}>
             <Card sx={{ mb: 3 }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -359,7 +418,7 @@ export default function CheckoutPage() {
                       onChange={setField('month')} onBlur={() => setTouched((t) => ({ ...t, month: true }))}
                       error={touched.month && invalid.month}
                       placeholder="01"
-                      helperText={touched.month && invalid.month ? '01–12' : ' '}
+                      helperText={touched.month && invalid.month ? '01-12' : ' '}
                       slotProps={{ htmlInput: { inputMode: 'numeric', autoComplete: 'cc-exp-month', maxLength: 2 } }} required />
                   </Grid>
                   <Grid size={{ xs: 4 }}>
@@ -381,7 +440,7 @@ export default function CheckoutPage() {
             </Card>
           </Grid>
 
-          {/* ── Server-computed summary ── */}
+          {/* Server-computed summary */}
           <Grid size={{ xs: 12, md: 5 }}>
             <Card sx={{ position: { md: 'sticky' }, top: { md: 24 } }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -402,6 +461,7 @@ export default function CheckoutPage() {
                           <Typography variant="caption" color="text.secondary">
                             {item.numberType} · {item.planType}
                             {item.source === 'numberbarn' && ' · NumberBarn'}
+                            {isOfferCheckout && ' · Accepted Offer'}
                           </Typography>
                         </Box>
                         <Typography variant="body2" sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
@@ -439,7 +499,7 @@ export default function CheckoutPage() {
                       </Typography>
                     )}
 
-                    {quote.items.some((i) => i.source === 'numberbarn') && (
+                    {!isOfferCheckout && quote.items.some((i) => i.source === 'numberbarn') && (
                       <Alert severity="info" sx={{ mt: 2, fontSize: '0.8rem' }}>
                         Some numbers in this order are sourced from NumberBarn and are provisioned
                         manually — expect them within 1–3 business days.
@@ -457,9 +517,9 @@ export default function CheckoutPage() {
                       sx={{ mt: 3, py: 1.5, fontSize: '1.05rem' }}
                     >
                       {submitting
-                        ? 'Processing…'
+                        ? 'Processing...'
                         : !acceptReady && !acceptError
-                          ? 'Loading payment form…'
+                          ? 'Loading payment form...'
                           : `Pay ${money(quote.totalAmount)}`}
                     </Button>
 
@@ -469,7 +529,7 @@ export default function CheckoutPage() {
                   </>
                 ) : (
                   <Typography variant="body2" color="text.secondary">
-                    We could not price your cart. Please go back and try again.
+                    We could not price your {isOfferCheckout ? 'order' : 'cart'}. Please go back and try again.
                   </Typography>
                 )}
               </CardContent>
@@ -478,5 +538,13 @@ export default function CheckoutPage() {
         </Grid>
       </Container>
     </Box>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense>
+      <CheckoutContent />
+    </Suspense>
   );
 }
