@@ -49,10 +49,21 @@ export default function TollFreePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<PhoneNumber[]>('/search?number_type=toll_free&sort=featured&limit=8').then((res) => {
-      setFeatured(res.data || []);
-      setLoading(false);
-    });
+    let cancelled = false;
+    api
+      .get<PhoneNumber[]>('/search?number_type=toll_free&sort=featured&limit=8')
+      .then((res) => {
+        if (!cancelled) setFeatured(res.data || []);
+      })
+      .catch((err) => {
+        console.error('[TollFree] Failed to load featured numbers:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

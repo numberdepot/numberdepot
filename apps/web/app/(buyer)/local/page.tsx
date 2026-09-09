@@ -52,14 +52,35 @@ export default function LocalNumbersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
+    let cancelled = false;
+    // allSettled, not all: one failing request should not blank out the other.
+    Promise.allSettled([
       api.get<AreaCode[]>('/numbers/area-codes'),
       api.get<PhoneNumber[]>('/search?number_type=local&sort=featured&limit=8'),
-    ]).then(([acRes, numRes]) => {
-      setAreaCodes((acRes.data || []).filter((ac) => !['800', '888', '877', '866', '855', '844', '833'].includes(ac.code)));
-      setFeatured(numRes.data || []);
-      setLoading(false);
-    });
+    ])
+      .then(([acRes, numRes]) => {
+        if (cancelled) return;
+        if (acRes.status === 'fulfilled') {
+          setAreaCodes(
+            (acRes.value.data || []).filter(
+              (ac) => !['800', '888', '877', '866', '855', '844', '833'].includes(ac.code)
+            )
+          );
+        } else {
+          console.error('[Local] Failed to load area codes:', acRes.reason);
+        }
+        if (numRes.status === 'fulfilled') {
+          setFeatured(numRes.value.data || []);
+        } else {
+          console.error('[Local] Failed to load featured numbers:', numRes.reason);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

@@ -30,10 +30,24 @@ export default function VanityPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<PhoneNumber[]>('/search?number_type=vanity&sort=price_asc&limit=15').then((res) => {
-      setFeatured(res.data || []);
-      setLoading(false);
-    });
+    let cancelled = false;
+    // Without the catch, a failed request left `loading` true forever and the
+    // page sat on skeletons, plus an unhandled rejection in the console. The
+    // rest of the page is static, so an empty list is a fine fallback.
+    api
+      .get<PhoneNumber[]>('/search?number_type=vanity&sort=price_asc&limit=15')
+      .then((res) => {
+        if (!cancelled) setFeatured(res.data || []);
+      })
+      .catch((err) => {
+        console.error('[Vanity] Failed to load featured numbers:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
