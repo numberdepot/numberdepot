@@ -20,7 +20,8 @@ interface PhoneNumber {
   number: string;
   areaCode: string;
   numberType: string;
-  salePrice: number;
+  // Inventory numbers are offer-only, so formatNumberDoc returns null here.
+  salePrice: number | null;
   isPremium: boolean;
   vanityText: string | null;
 }
@@ -132,7 +133,7 @@ export default function VanityPage() {
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Chip label={num.areaCode} size="small" variant="outlined" />
                         <Typography variant="h6" sx={{ fontWeight: 800, color: 'secondary.main' }}>
-                          ${num.salePrice.toLocaleString()}
+                          {num.salePrice != null ? `$${num.salePrice.toLocaleString()}` : 'Make an Offer'}
                         </Typography>
                       </Box>
                       {num.isPremium && <Chip label="Premium" size="small" color="warning" sx={{ mt: 1.5, fontWeight: 600 }} />}

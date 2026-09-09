@@ -20,7 +20,7 @@ interface PhoneNumber {
   number: string;
   areaCode: string;
   numberType: string;
-  salePrice: number;
+  salePrice: number | null;
   isPremium: boolean;
   vanityText: string | null;
 }
@@ -131,7 +131,9 @@ export default function TollFreePage() {
                       <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{num.number}</Typography>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
                         <Chip label={num.areaCode} size="small" variant="outlined" />
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'secondary.main' }}>${num.salePrice}</Typography>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'secondary.main' }}>
+                          {num.salePrice != null ? `$${num.salePrice.toLocaleString()}` : 'Make an Offer'}
+                        </Typography>
                       </Box>
                     </CardActionArea>
                   </Card>

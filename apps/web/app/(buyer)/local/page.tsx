@@ -27,7 +27,7 @@ interface PhoneNumber {
   number: string;
   areaCode: string;
   numberType: string;
-  salePrice: number;
+  salePrice: number | null;
   isPremium: boolean;
 }
 
@@ -158,7 +158,9 @@ export default function LocalNumbersPage() {
                       <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{num.number}</Typography>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
                         <Typography variant="body2" color="text.secondary">Area {num.areaCode}</Typography>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'secondary.main' }}>${num.salePrice}</Typography>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'secondary.main' }}>
+                          {num.salePrice != null ? `$${num.salePrice.toLocaleString()}` : 'Make an Offer'}
+                        </Typography>
                       </Box>
                       {num.isPremium && <Chip label="Premium" size="small" color="warning" sx={{ mt: 1, fontWeight: 600 }} />}
                     </CardActionArea>
