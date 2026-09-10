@@ -33,7 +33,8 @@
       "Bash(node -e:*)",
       "Bash(python3:*)",
       "Bash(netstat:*)",
-      "Bash(fi:*)"
+      "Bash(fi:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }
