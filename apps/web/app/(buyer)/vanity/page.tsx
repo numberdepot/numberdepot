@@ -20,7 +20,8 @@ interface PhoneNumber {
   number: string;
   areaCode: string;
   numberType: string;
-  salePrice: number;
+  // Inventory numbers are offer-only, so formatNumberDoc returns null here.
+  salePrice: number | null;
   isPremium: boolean;
   vanityText: string | null;
 }
@@ -30,10 +31,24 @@ export default function VanityPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<PhoneNumber[]>('/search?number_type=vanity&sort=price_asc&limit=15').then((res) => {
-      setFeatured(res.data || []);
-      setLoading(false);
-    });
+    let cancelled = false;
+    // Without the catch, a failed request left `loading` true forever and the
+    // page sat on skeletons, plus an unhandled rejection in the console. The
+    // rest of the page is static, so an empty list is a fine fallback.
+    api
+      .get<PhoneNumber[]>('/search?number_type=vanity&sort=price_asc&limit=15')
+      .then((res) => {
+        if (!cancelled) setFeatured(res.data || []);
+      })
+      .catch((err) => {
+        console.error('[Vanity] Failed to load featured numbers:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -118,7 +133,7 @@ export default function VanityPage() {
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Chip label={num.areaCode} size="small" variant="outlined" />
                         <Typography variant="h6" sx={{ fontWeight: 800, color: 'secondary.main' }}>
-                          ${num.salePrice.toLocaleString()}
+                          {num.salePrice != null ? `$${num.salePrice.toLocaleString()}` : 'Make an Offer'}
                         </Typography>
                       </Box>
                       {num.isPremium && <Chip label="Premium" size="small" color="warning" sx={{ mt: 1.5, fontWeight: 600 }} />}

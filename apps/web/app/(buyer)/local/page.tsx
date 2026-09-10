@@ -27,7 +27,7 @@ interface PhoneNumber {
   number: string;
   areaCode: string;
   numberType: string;
-  salePrice: number;
+  salePrice: number | null;
   isPremium: boolean;
 }
 
@@ -52,14 +52,35 @@ export default function LocalNumbersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
+    let cancelled = false;
+    // allSettled, not all: one failing request should not blank out the other.
+    Promise.allSettled([
       api.get<AreaCode[]>('/numbers/area-codes'),
       api.get<PhoneNumber[]>('/search?number_type=local&sort=featured&limit=8'),
-    ]).then(([acRes, numRes]) => {
-      setAreaCodes((acRes.data || []).filter((ac) => !['800', '888', '877', '866', '855', '844', '833'].includes(ac.code)));
-      setFeatured(numRes.data || []);
-      setLoading(false);
-    });
+    ])
+      .then(([acRes, numRes]) => {
+        if (cancelled) return;
+        if (acRes.status === 'fulfilled') {
+          setAreaCodes(
+            (acRes.value.data || []).filter(
+              (ac) => !['800', '888', '877', '866', '855', '844', '833'].includes(ac.code)
+            )
+          );
+        } else {
+          console.error('[Local] Failed to load area codes:', acRes.reason);
+        }
+        if (numRes.status === 'fulfilled') {
+          setFeatured(numRes.value.data || []);
+        } else {
+          console.error('[Local] Failed to load featured numbers:', numRes.reason);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -137,7 +158,9 @@ export default function LocalNumbersPage() {
                       <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{num.number}</Typography>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
                         <Typography variant="body2" color="text.secondary">Area {num.areaCode}</Typography>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'secondary.main' }}>${num.salePrice}</Typography>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'secondary.main' }}>
+                          {num.salePrice != null ? `$${num.salePrice.toLocaleString()}` : 'Make an Offer'}
+                        </Typography>
                       </Box>
                       {num.isPremium && <Chip label="Premium" size="small" color="warning" sx={{ mt: 1, fontWeight: 600 }} />}
                     </CardActionArea>
