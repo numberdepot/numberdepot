@@ -13,6 +13,7 @@ import Grid from '@mui/material/Grid';
 import Divider from '@mui/material/Divider';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import Alert from '@mui/material/Alert';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
 import { api } from '@/lib/api';
@@ -28,7 +29,6 @@ interface NumberForm {
   isVanity: boolean;
   isTollFree: boolean;
   isPremium: boolean;
-  allowOffers: boolean;
   minimumOffer: string;
   listingTitle: string;
   listingDescription: string;
@@ -46,7 +46,6 @@ const initialForm: NumberForm = {
   isVanity: false,
   isTollFree: false,
   isPremium: false,
-  allowOffers: true,
   minimumOffer: '',
   listingTitle: '',
   listingDescription: '',
@@ -82,8 +81,8 @@ export default function AdminAddNumberPage() {
     const newErrors: Partial<Record<keyof NumberForm, string>> = {};
     if (!form.number.trim()) newErrors.number = 'Phone number is required';
     if (!form.areaCode.trim()) newErrors.areaCode = 'Area code is required';
-    if (!form.basePrice || parseFloat(form.basePrice) < 0) newErrors.basePrice = 'Valid base price is required';
-    if (!form.monthlyPrice || parseFloat(form.monthlyPrice) < 0) newErrors.monthlyPrice = 'Valid monthly price is required';
+    if (form.basePrice && parseFloat(form.basePrice) < 0) newErrors.basePrice = 'Price cannot be negative';
+    if (form.monthlyPrice && parseFloat(form.monthlyPrice) < 0) newErrors.monthlyPrice = 'Price cannot be negative';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -97,14 +96,14 @@ export default function AdminAddNumberPage() {
         areaCode: form.areaCode.trim(),
         numberType: form.numberType,
         vanityText: form.vanityText.trim() || undefined,
-        basePrice: parseFloat(form.basePrice),
-        monthlyPrice: parseFloat(form.monthlyPrice),
+        basePrice: form.basePrice ? parseFloat(form.basePrice) : 0,
+        monthlyPrice: form.monthlyPrice ? parseFloat(form.monthlyPrice) : 0,
         flags: {
           isVanity: form.isVanity,
           isTollFree: form.isTollFree,
           isPremium: form.isPremium,
         },
-        allowOffers: form.allowOffers,
+        allowOffers: true,
         minimumOffer: form.minimumOffer ? parseFloat(form.minimumOffer) : undefined,
         listing: {
           title: form.listingTitle.trim() || undefined,
@@ -204,16 +203,19 @@ export default function AdminAddNumberPage() {
           <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a1a2e', mb: 2 }}>
             Pricing
           </Typography>
+          <Alert severity="info" sx={{ mb: 3 }}>
+            All inventory numbers are <strong>Offer Only</strong> — buyers will see &quot;Make an Offer&quot; instead of a fixed price. Prices below are for internal reference only and are not shown to buyers.
+          </Alert>
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
-                label="Base Price ($)"
+                label="Reference Price ($)"
                 type="number"
-                placeholder="0.00"
+                placeholder="Optional"
                 value={form.basePrice}
                 onChange={handleChange('basePrice')}
                 error={!!errors.basePrice}
-                helperText={errors.basePrice}
+                helperText={errors.basePrice || 'Internal only — not shown to buyers'}
                 fullWidth
                 slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
               />
@@ -222,11 +224,11 @@ export default function AdminAddNumberPage() {
               <TextField
                 label="Monthly Price ($)"
                 type="number"
-                placeholder="0.00"
+                placeholder="Optional"
                 value={form.monthlyPrice}
                 onChange={handleChange('monthlyPrice')}
                 error={!!errors.monthlyPrice}
-                helperText={errors.monthlyPrice}
+                helperText={errors.monthlyPrice || 'Internal only — not shown to buyers'}
                 fullWidth
                 slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
               />
@@ -270,32 +272,30 @@ export default function AdminAddNumberPage() {
               }
               label="Premium"
             />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={form.allowOffers}
-                  onChange={handleSwitch('allowOffers')}
-                  sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#4BA0A1' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#4BA0A1' } }}
-                />
-              }
-              label="Allow Offers"
+          </Box>
+
+          <Divider sx={{ my: 4 }} />
+
+          {/* Offer Settings */}
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a1a2e', mb: 2 }}>
+            Offer Settings
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+            All inventory numbers are offer-only. Buyers will submit offers which you can accept, counter, or decline from the admin panel.
+          </Typography>
+          <Box sx={{ maxWidth: 300 }}>
+            <TextField
+              label="Minimum Offer ($)"
+              type="number"
+              placeholder="No minimum"
+              value={form.minimumOffer}
+              onChange={handleChange('minimumOffer')}
+              fullWidth
+              size="small"
+              slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
+              helperText="Minimum amount buyers can offer. Leave empty for no minimum."
             />
           </Box>
-          {form.allowOffers && (
-            <Box sx={{ mt: 2, maxWidth: 300 }}>
-              <TextField
-                label="Minimum Offer ($)"
-                type="number"
-                placeholder="Leave empty for 70% of sale price"
-                value={form.minimumOffer}
-                onChange={handleChange('minimumOffer')}
-                fullWidth
-                size="small"
-                slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
-                helperText="Minimum amount buyers can offer. Defaults to 70% of sale price if empty."
-              />
-            </Box>
-          )}
 
           <Divider sx={{ my: 4 }} />
 
