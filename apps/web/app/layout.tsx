@@ -25,6 +25,10 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'NumberDepot' }],
   robots: 'index, follow',
+  icons: {
+    icon: '/icon.png',
+    apple: '/icon.png',
+  },
   openGraph: {
     title: 'NumberDepot — Buy & Sell Phone Numbers',
     description:
