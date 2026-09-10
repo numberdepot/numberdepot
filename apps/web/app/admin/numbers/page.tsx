@@ -505,7 +505,7 @@ export default function AdminNumbersPage() {
                       />
                     </TableCell>
                     <TableCell>
-                      {num.source === 'inventory' ? (
+                      {num.source === 'inventory' && !(num.basePrice || num.salePrice) ? (
                         <Chip label="Offer Only" size="small" sx={{ fontSize: '0.7rem', fontWeight: 600, bgcolor: '#00266414', color: '#002664' }} />
                       ) : (
                         <Typography variant="body2" sx={{ fontWeight: (num.basePrice || num.salePrice) ? 400 : 600, color: (num.basePrice || num.salePrice) ? 'inherit' : 'text.disabled' }}>
@@ -713,18 +713,18 @@ export default function AdminNumbersPage() {
             </Typography>
             {editDialog?.source === 'inventory' && (
               <Alert severity="info" sx={{ borderRadius: 2, fontSize: '0.8rem' }}>
-                Inventory numbers are <strong>Offer Only</strong> — buyers cannot see or pay a fixed price. They must submit an offer which you can accept, counter, or decline. The price below is for your internal reference only.
+                Leave price empty for <strong>Offer Only</strong> — buyers will see &quot;Make an Offer&quot;. If you set a price, buyers will see the price with an &quot;Add to Cart&quot; option.
               </Alert>
             )}
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
-                label={editDialog?.source === 'inventory' ? 'Reference Price ($)' : 'Sale Price ($)'}
+                label="Sale Price ($)"
                 type="number"
                 value={editForm.basePrice}
                 onChange={(e) => setEditForm({ ...editForm, basePrice: e.target.value })}
                 fullWidth
                 slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
-                helperText={editDialog?.source === 'inventory' ? 'Internal only — not shown to buyers' : ''}
+                placeholder={editDialog?.source === 'inventory' ? 'Leave empty for offer-only' : '0.00'}
               />
               <TextField
                 label="Monthly ($)"
@@ -804,7 +804,23 @@ export default function AdminNumbersPage() {
             <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1a1a2e', mt: 1, mb: -1 }}>
               Offer Settings
             </Typography>
-            {editDialog?.source === 'inventory' ? (
+            {editDialog?.source === 'inventory' && !editForm.basePrice ? (
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                No price set — this number is <strong>Offer Only</strong>. Buyers will submit offers.
+              </Typography>
+            ) : (
+              <Box>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={editForm.allowOffers}
+                    onChange={(e) => setEditForm({ ...editForm, allowOffers: e.target.checked })}
+                  />
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>Allow Offers</Typography>
+                </label>
+              </Box>
+            )}
+            {((!editForm.basePrice && editDialog?.source === 'inventory') || editForm.allowOffers) && (
               <TextField
                 label="Minimum Offer ($)"
                 type="number"
@@ -815,31 +831,6 @@ export default function AdminNumbersPage() {
                 placeholder="No minimum"
                 helperText="Minimum amount buyers can offer. Leave empty for no minimum."
               />
-            ) : (
-              <>
-                <Box>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={editForm.allowOffers}
-                      onChange={(e) => setEditForm({ ...editForm, allowOffers: e.target.checked })}
-                    />
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>Allow Offers</Typography>
-                  </label>
-                </Box>
-                {editForm.allowOffers && (
-                  <TextField
-                    label="Minimum Offer ($)"
-                    type="number"
-                    value={editForm.minimumOffer}
-                    onChange={(e) => setEditForm({ ...editForm, minimumOffer: e.target.value })}
-                    fullWidth
-                    slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
-                    placeholder="Leave empty for 70% of sale price"
-                    helperText="Minimum amount buyers can offer. Defaults to 70% of sale price if empty."
-                  />
-                )}
-              </>
             )}
           </Box>
         </DialogContent>

@@ -10,9 +10,10 @@ export function dollarsToCents(dollars: number): number {
 }
 
 export function formatNumberDoc(doc: WithId<NumberDoc>) {
-  // All inventory numbers are offer-only (no fixed price, only "Make an Offer").
-  // NumberBarn numbers keep their normal price/cart flow.
-  const isOfferOnly = doc.source === 'inventory';
+  // Inventory numbers without a price are offer-only ("Make an Offer").
+  // Inventory numbers with a price work like normal (price shown, cart, checkout).
+  // NumberBarn numbers always keep their normal price/cart flow.
+  const isOfferOnly = doc.source === 'inventory' && (!doc.price || doc.price === 0);
 
   return {
     id: doc._id.toString(),

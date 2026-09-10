@@ -29,6 +29,7 @@ interface NumberForm {
   isVanity: boolean;
   isTollFree: boolean;
   isPremium: boolean;
+  allowOffers: boolean;
   minimumOffer: string;
   listingTitle: string;
   listingDescription: string;
@@ -46,6 +47,7 @@ const initialForm: NumberForm = {
   isVanity: false,
   isTollFree: false,
   isPremium: false,
+  allowOffers: true,
   minimumOffer: '',
   listingTitle: '',
   listingDescription: '',
@@ -103,7 +105,7 @@ export default function AdminAddNumberPage() {
           isTollFree: form.isTollFree,
           isPremium: form.isPremium,
         },
-        allowOffers: true,
+        allowOffers: !form.basePrice ? true : form.allowOffers,
         minimumOffer: form.minimumOffer ? parseFloat(form.minimumOffer) : undefined,
         listing: {
           title: form.listingTitle.trim() || undefined,
@@ -204,18 +206,18 @@ export default function AdminAddNumberPage() {
             Pricing
           </Typography>
           <Alert severity="info" sx={{ mb: 3 }}>
-            All inventory numbers are <strong>Offer Only</strong> — buyers will see &quot;Make an Offer&quot; instead of a fixed price. Prices below are for internal reference only and are not shown to buyers.
+            Leave price empty for <strong>Offer Only</strong> — buyers will see &quot;Make an Offer&quot; instead of a fixed price. If you set a price, buyers will see the price with an &quot;Add to Cart&quot; option.
           </Alert>
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
-                label="Reference Price ($)"
+                label="Base Price ($)"
                 type="number"
-                placeholder="Optional"
+                placeholder="Leave empty for offer-only"
                 value={form.basePrice}
                 onChange={handleChange('basePrice')}
                 error={!!errors.basePrice}
-                helperText={errors.basePrice || 'Internal only — not shown to buyers'}
+                helperText={errors.basePrice}
                 fullWidth
                 slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
               />
@@ -224,11 +226,11 @@ export default function AdminAddNumberPage() {
               <TextField
                 label="Monthly Price ($)"
                 type="number"
-                placeholder="Optional"
+                placeholder="0.00"
                 value={form.monthlyPrice}
                 onChange={handleChange('monthlyPrice')}
                 error={!!errors.monthlyPrice}
-                helperText={errors.monthlyPrice || 'Internal only — not shown to buyers'}
+                helperText={errors.monthlyPrice}
                 fullWidth
                 slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
               />
@@ -280,22 +282,42 @@ export default function AdminAddNumberPage() {
           <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a1a2e', mb: 2 }}>
             Offer Settings
           </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            All inventory numbers are offer-only. Buyers will submit offers which you can accept, counter, or decline from the admin panel.
-          </Typography>
-          <Box sx={{ maxWidth: 300 }}>
-            <TextField
-              label="Minimum Offer ($)"
-              type="number"
-              placeholder="No minimum"
-              value={form.minimumOffer}
-              onChange={handleChange('minimumOffer')}
-              fullWidth
-              size="small"
-              slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
-              helperText="Minimum amount buyers can offer. Leave empty for no minimum."
-            />
-          </Box>
+          {!form.basePrice ? (
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+              No price set — this number will be <strong>Offer Only</strong>. Buyers will submit offers which you can accept, counter, or decline from the admin panel.
+            </Typography>
+          ) : (
+            <Box sx={{ mb: 2 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={form.allowOffers}
+                    onChange={handleSwitch('allowOffers')}
+                    sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#4BA0A1' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#4BA0A1' } }}
+                  />
+                }
+                label="Allow Offers"
+              />
+              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', ml: 6 }}>
+                When enabled, buyers can also make offers in addition to purchasing at the listed price.
+              </Typography>
+            </Box>
+          )}
+          {(!form.basePrice || form.allowOffers) && (
+            <Box sx={{ maxWidth: 300 }}>
+              <TextField
+                label="Minimum Offer ($)"
+                type="number"
+                placeholder="No minimum"
+                value={form.minimumOffer}
+                onChange={handleChange('minimumOffer')}
+                fullWidth
+                size="small"
+                slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
+                helperText="Minimum amount buyers can offer. Leave empty for no minimum."
+              />
+            </Box>
+          )}
 
           <Divider sx={{ my: 4 }} />
 
