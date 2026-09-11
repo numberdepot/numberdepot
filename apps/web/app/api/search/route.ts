@@ -94,60 +94,85 @@ export async function GET(req: NextRequest) {
       case 'newest': sortObj = { createdAt: -1 }; break;
     }
 
-    const [results, total] = await Promise.all([
-      col.find(filter).sort(sortObj).skip(skip).limit(limit).toArray(),
+    // Fetch inventory + NumberBarn in parallel, then merge & paginate
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let nbFormatted: any[] = [];
+
+    const inventoryPromise = Promise.all([
+      col.find(filter).sort(sortObj).toArray(),
       col.countDocuments(filter),
     ]);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let data: any[] = results.map((doc) => formatNumberDoc(doc as any));
-    let adjustedTotal = total;
-
-    // Always search NumberBarn alongside inventory when user searched something
+    // NumberBarn search (runs in parallel with inventory)
+    let nbPromise: Promise<void> = Promise.resolve();
     if (areaCode || q) {
-      try {
-        // Extract a valid NPA (area code) for NumberBarn: only use digits if they look like an area code
-        let nbNpa = areaCode || undefined;
-        const qDigits = q ? q.replace(/\D/g, '') : '';
-        if (!nbNpa && qDigits.length >= 3) {
-          // If 10+ digits, first 3 (after stripping country code) are area code
-          if (qDigits.length >= 10) {
-            const d = qDigits.length === 11 && qDigits.startsWith('1') ? qDigits.slice(1) : qDigits;
-            nbNpa = d.slice(0, 3);
-          } else if (qDigits.length === 3) {
-            // Exactly 3 digits = area code
-            nbNpa = qDigits;
+      nbPromise = (async () => {
+        try {
+          let nbNpa = areaCode || undefined;
+          const qDigits = q ? q.replace(/\D/g, '') : '';
+          if (!nbNpa && qDigits.length >= 3) {
+            if (qDigits.length >= 10) {
+              const d = qDigits.length === 11 && qDigits.startsWith('1') ? qDigits.slice(1) : qDigits;
+              nbNpa = d.slice(0, 3);
+            } else if (qDigits.length === 3) {
+              nbNpa = qDigits;
+            }
           }
-          // For 4-9 digits, don't guess area code — it could be partial number
+
+          const nbParams = {
+            npa: nbNpa,
+            search: q && /[a-zA-Z]/.test(q) ? q : undefined,
+            limit: 100,
+            priceMin: priceMin ? dollarsToCents(parseFloat(priceMin)) : undefined,
+            priceMax: priceMax ? dollarsToCents(parseFloat(priceMax)) : undefined,
+          };
+          console.log('[Search] NumberBarn params:', JSON.stringify(nbParams));
+
+          const nbResults = await nbSearch(nbParams);
+          console.log(`[Search] NumberBarn returned ${nbResults.length} results`);
+
+          nbFormatted = await Promise.all(nbResults.map(toOurFormat));
+        } catch (err) {
+          console.error('[Search] NumberBarn search failed:', err);
         }
-
-        const nbParams = {
-          npa: nbNpa,
-          search: q && /[a-zA-Z]/.test(q) ? q : undefined,
-          limit: 100,
-          priceMin: priceMin ? dollarsToCents(parseFloat(priceMin)) : undefined,
-          priceMax: priceMax ? dollarsToCents(parseFloat(priceMax)) : undefined,
-        };
-        console.log('[Search] NumberBarn params:', JSON.stringify(nbParams));
-
-        const nbResults = await nbSearch(nbParams);
-        console.log(`[Search] NumberBarn returned ${nbResults.length} results`);
-
-        const nbFormatted = await Promise.all(nbResults.map(toOurFormat));
-
-        // Exclude duplicates with our inventory
-        const existingNumbers = new Set(results.map((r) => (r as any).number));
-        const unique = nbFormatted.filter((n) => !existingNumbers.has(n.rawNumber));
-
-        // Our inventory first, then NumberBarn
-        data = [...data, ...unique];
-        adjustedTotal += unique.length;
-      } catch (err) {
-        console.error('[Search] NumberBarn search failed:', err);
-        // Graceful degradation — just show inventory results
-      }
+      })();
     }
 
+    const [[results], _] = await Promise.all([inventoryPromise, nbPromise]);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let allData: any[] = results.map((doc) => formatNumberDoc(doc as any));
+
+    // Merge NumberBarn results, excluding duplicates
+    if (nbFormatted.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const existingNumbers = new Set(results.map((r) => (r as any).number));
+      const unique = nbFormatted.filter((n: { rawNumber: string }) => !existingNumbers.has(n.rawNumber));
+      allData = [...allData, ...unique];
+    }
+
+    // Sort the merged results
+    allData.sort((a, b) => {
+      switch (sort) {
+        case 'price_desc':
+          return (b.salePrice ?? 0) - (a.salePrice ?? 0);
+        case 'featured':
+          if (a.isPremium !== b.isPremium) return a.isPremium ? -1 : 1;
+          return (a.salePrice ?? 0) - (b.salePrice ?? 0);
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'price_asc':
+        default:
+          // Offer-only (no price) numbers go after priced numbers
+          if (a.salePrice == null && b.salePrice != null) return 1;
+          if (a.salePrice != null && b.salePrice == null) return -1;
+          return (a.salePrice ?? 0) - (b.salePrice ?? 0);
+      }
+    });
+
+    // Paginate the merged + sorted results
+    const adjustedTotal = allData.length;
+    const data = allData.slice(skip, skip + limit);
     const totalPages = Math.max(1, Math.ceil(adjustedTotal / limit));
 
     return NextResponse.json({
