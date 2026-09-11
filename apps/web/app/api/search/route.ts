@@ -151,8 +151,13 @@ export async function GET(req: NextRequest) {
       allData = [...allData, ...unique];
     }
 
-    // Sort the merged results
+    // Sort the merged results — inventory first, then NumberBarn
     allData.sort((a, b) => {
+      // Primary: inventory numbers always come before NumberBarn
+      if (a.source !== b.source) {
+        return a.source === 'inventory' ? -1 : 1;
+      }
+      // Secondary: sort within same source by selected criteria
       switch (sort) {
         case 'price_desc':
           return (b.salePrice ?? 0) - (a.salePrice ?? 0);
@@ -163,9 +168,6 @@ export async function GET(req: NextRequest) {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         case 'price_asc':
         default:
-          // Offer-only (no price) numbers go after priced numbers
-          if (a.salePrice == null && b.salePrice != null) return 1;
-          if (a.salePrice != null && b.salePrice == null) return -1;
           return (a.salePrice ?? 0) - (b.salePrice ?? 0);
       }
     });
