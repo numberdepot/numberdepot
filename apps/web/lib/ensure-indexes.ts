@@ -15,6 +15,7 @@ export async function ensureIndexes(): Promise<void> {
   const settingsColl = db.collection('settings');
   const offersColl = db.collection('offers');
   const notificationsColl = db.collection('notifications');
+  const suggestionsColl = db.collection('suggestions');
 
   // ── Drop the destructive reservation TTL index ──
   // An earlier version created { reservationExpiresAt: 1 } with
@@ -102,6 +103,10 @@ export async function ensureIndexes(): Promise<void> {
     offersColl.createIndex({ sellerId: 1, status: 1, createdAt: -1 }),
     offersColl.createIndex({ numberId: 1, status: 1 }),
     offersColl.createIndex({ status: 1, expiresAt: 1 }),
+
+    // ── suggestions collection ──
+    suggestionsColl.createIndex({ status: 1, createdAt: -1 }),
+    suggestionsColl.createIndex({ createdAt: -1 }),
 
     // ── notifications collection ──
     notificationsColl.createIndex({ userId: 1, createdAt: -1 }),

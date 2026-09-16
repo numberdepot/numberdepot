@@ -248,6 +248,20 @@ export interface BlogPostDoc {
   updatedAt: Date;
 }
 
+export interface SuggestionDoc {
+  _id?: ObjectId;
+  name?: string;
+  email?: string;
+  message: string;
+  userId?: ObjectId; // set when the sender was signed in
+  source?: string; // where the form was opened from, e.g. "hero-bubble"
+  status: 'new' | 'read' | 'archived';
+  ip?: string;
+  userAgent?: string;
+  createdAt: Date;
+  readAt?: Date;
+}
+
 export interface SettingsDoc {
   _id?: ObjectId;
   key: string;

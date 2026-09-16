@@ -12,7 +12,7 @@ import { apiHandler } from '@/lib/api-handler';
 import { centsToDollars } from '@/lib/utils/pricing';
 import { extractAreaCode, toE164 } from '@/lib/utils/phone';
 import { chargeCard, getEnv, isConfigured, type BillTo, type GatewayResult } from '@/lib/authorizenet';
-import { serializeOrder } from '../../route';
+import { serializeOrder } from '@/lib/utils/order-serialize';
 import type { NumberDoc, OrderDoc, PaymentDoc, UserNumberDoc } from '@/lib/types/db';
 
 /** An order older than this must be rebuilt — prices and fees may have moved. */

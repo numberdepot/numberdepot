@@ -594,7 +594,7 @@ interface ApiOptions extends RequestInit {
  * 500 from the pay route would surface to the user as "Payment successful"
  * while no charge ever happened. These endpoints fail loudly instead.
  */
-const NO_MOCK_FALLBACK = ['/orders', '/payments', '/cart'];
+const NO_MOCK_FALLBACK = ['/orders', '/payments', '/cart', '/suggestions'];
 
 function allowsMockFallback(endpoint: string): boolean {
   const path = endpoint.split('?')[0];

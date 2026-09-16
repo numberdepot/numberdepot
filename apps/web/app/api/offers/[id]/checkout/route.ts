@@ -6,7 +6,7 @@ import { getOffersCollection, getNumbersCollection, getOrdersCollection } from '
 import { getFees } from '@/lib/utils/fees';
 import { dollarsToCents } from '@/lib/utils/pricing';
 import { insertOrderWithNumber } from '@/lib/utils/order-number';
-import { serializeOrder } from '@/app/api/orders/route';
+import { serializeOrder } from '@/lib/utils/order-serialize';
 import type { OrderDoc, OrderFeeLine } from '@/lib/types/db';
 
 export async function POST(

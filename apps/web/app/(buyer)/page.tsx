@@ -32,6 +32,7 @@ import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import GroupsIcon from '@mui/icons-material/Groups';
 import { api } from '@/lib/api';
 import { useReveal } from '@/lib/useReveal';
+import MascotWithBubble from '@/components/MascotWithBubble';
 
 interface PhoneNumber {
   id: string;
@@ -198,11 +199,11 @@ export default function HomePage() {
 
         <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
           <Grid container spacing={4} sx={{ alignItems: 'center' }}>
-            <Grid size={{ xs: 12, md: 7 }}>
+            <Grid size={{ xs: 12, md: 7, lg: 6 }}>
               <Typography
                 variant="h1"
                 sx={{
-                  fontSize: { xs: '2.25rem', sm: '3rem', md: '3.75rem', lg: '4.25rem' },
+                  fontSize: { xs: '2.25rem', sm: '3rem', md: '3.75rem', lg: '4rem' },
                   fontWeight: 800,
                   mb: 2.5,
                   lineHeight: 1.1,
@@ -305,19 +306,8 @@ export default function HomePage() {
                 ))}
               </Box>
             </Grid>
-            <Grid size={{ xs: 12, md: 5 }} sx={{ display: 'flex', justifyContent: 'center' }}>
-              <Box
-                component="img"
-                src="/images/elephant-01.png"
-                alt="NumberDepot elephant mascot"
-                className="animate-float"
-                sx={{
-                  maxWidth: { xs: 340, md: 520, lg: 600 },
-                  width: '100%',
-                  height: 'auto',
-                  filter: 'drop-shadow(0 20px 50px rgba(0,0,0,0.35))',
-                }}
-              />
+            <Grid size={{ xs: 12, md: 5, lg: 6 }} sx={{ display: 'flex', justifyContent: 'center' }}>
+              <MascotWithBubble />
             </Grid>
           </Grid>
         </Container>

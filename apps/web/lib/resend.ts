@@ -123,3 +123,32 @@ export async function sendPasswordReset(email: string, resetUrl: string) {
     `,
   });
 }
+
+export async function sendSuggestionNotification(
+  to: string,
+  s: { name: string; email: string; message: string; source?: string }
+) {
+  const esc = (v: string) =>
+    v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  await getResendClient().emails.send({
+    from: FROM_EMAIL,
+    to,
+    ...(s.email ? { replyTo: s.email } : {}),
+    subject: `New suggestion from ${s.name || 'a visitor'}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 32px;">
+        <h2 style="color: #002664; margin-top: 0;">New Suggestion</h2>
+        <table style="border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 4px 12px 4px 0; color: #666;">From</td><td style="padding: 4px 0;">${esc(s.name || 'Anonymous')}</td></tr>
+          <tr><td style="padding: 4px 12px 4px 0; color: #666;">Email</td><td style="padding: 4px 0;">${s.email ? `<a href="mailto:${esc(s.email)}">${esc(s.email)}</a>` : '<em>not provided</em>'}</td></tr>
+          ${s.source ? `<tr><td style="padding: 4px 12px 4px 0; color: #666;">Via</td><td style="padding: 4px 0;">${esc(s.source)}</td></tr>` : ''}
+        </table>
+        <div style="background: #f5f6f8; border-left: 4px solid #E53935; padding: 16px; border-radius: 6px; white-space: pre-wrap; line-height: 1.6;">${esc(s.message)}</div>
+        <p style="color: #666; margin-top: 24px;">All suggestions are listed in the admin panel under <strong>Suggestions</strong>.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="color: #999; font-size: 12px;">NumberDepot — The premier phone number marketplace</p>
+      </div>
+    `,
+  });
+}

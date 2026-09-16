@@ -1,6 +1,6 @@
 import { Collection } from 'mongodb';
 import { getDb } from './db';
-import type { UserDoc, NumberDoc, OrderDoc, PaymentDoc, UserNumberDoc, SettingsDoc, OfferDoc, NotificationDoc, FaqDoc, ContentPageDoc, BlogPostDoc } from './types/db';
+import type { UserDoc, NumberDoc, OrderDoc, PaymentDoc, UserNumberDoc, SettingsDoc, SuggestionDoc, OfferDoc, NotificationDoc, FaqDoc, ContentPageDoc, BlogPostDoc } from './types/db';
 
 export async function getNumbersCollection(): Promise<Collection<NumberDoc>> {
   const db = await getDb();
@@ -25,6 +25,11 @@ export async function getPaymentsCollection(): Promise<Collection<PaymentDoc>> {
 export async function getUserNumbersCollection(): Promise<Collection<UserNumberDoc>> {
   const db = await getDb();
   return db.collection<UserNumberDoc>('user_numbers');
+}
+
+export async function getSuggestionsCollection(): Promise<Collection<SuggestionDoc>> {
+  const db = await getDb();
+  return db.collection<SuggestionDoc>('suggestions');
 }
 
 export async function getSettingsCollection(): Promise<Collection<SettingsDoc>> {
