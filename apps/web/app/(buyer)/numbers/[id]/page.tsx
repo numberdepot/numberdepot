@@ -215,10 +215,9 @@ export default function NumberDetailPage() {
     setSubmittingOffer(true);
     try {
       await api.post('/offers', {
-        listingId: number?.listingId,
-        phoneNumberId: number?.id,
+        numberId: number?.id,
         amount,
-        buyerMessage: offerMessage || undefined,
+        message: offerMessage || undefined,
       });
       showSnackbar('Offer submitted successfully!', 'success');
       setOfferDialogOpen(false);
