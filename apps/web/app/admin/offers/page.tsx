@@ -80,8 +80,10 @@ const statusLabel: Record<string, string> = {
 };
 
 function OfferCard({ offer, onAction }: { offer: Offer; onAction: (id: string, action: string) => void }) {
-  const canAct = offer.status === 'pending' || offer.status === 'countered';
+  // Admin can act on: new pending offers, or buyer counter-backs (pending + buyerCounter).
+  // When status is 'countered', admin already countered — waiting for buyer response, no actions needed.
   const isBuyerCounter = offer.buyerCounter != null && offer.status === 'pending';
+  const canAct = offer.status === 'pending';
 
   return (
     <Box
@@ -182,7 +184,7 @@ function OfferCard({ offer, onAction }: { offer: Offer; onAction: (id: string, a
       </Box>
 
       {/* Actions */}
-      {canAct && (
+      {canAct ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flexShrink: 0 }}>
           <Button
             size="small"
@@ -214,6 +216,13 @@ function OfferCard({ offer, onAction }: { offer: Offer; onAction: (id: string, a
           >
             Decline
           </Button>
+        </Box>
+      ) : offer.status === 'countered' && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, flexShrink: 0, px: 1 }}>
+          <AccessTimeIcon sx={{ fontSize: 20, color: '#4BA0A1' }} />
+          <Typography variant="caption" sx={{ color: '#4BA0A1', fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>
+            Waiting for<br />buyer response
+          </Typography>
         </Box>
       )}
     </Box>
