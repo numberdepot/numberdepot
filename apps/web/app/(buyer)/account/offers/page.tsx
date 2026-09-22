@@ -21,8 +21,11 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Divider from '@mui/material/Divider';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import PaymentIcon from '@mui/icons-material/Payment';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { api } from '@/lib/api';
 import { useSnackbar } from '@/lib/snackbar';
 
@@ -75,6 +78,11 @@ export default function BuyerOffersPage() {
   const [cancelling, setCancelling] = useState(false);
   const [detailOffer, setDetailOffer] = useState<Offer | null>(null);
   const [payingOffer, setPayingOffer] = useState<string | null>(null);
+  const [acceptingOffer, setAcceptingOffer] = useState<string | null>(null);
+  const [counterDialogOffer, setCounterDialogOffer] = useState<Offer | null>(null);
+  const [counterAmount, setCounterAmount] = useState('');
+  const [counterMessage, setCounterMessage] = useState('');
+  const [submittingCounter, setSubmittingCounter] = useState(false);
 
   useEffect(() => {
     api.get<Offer[]>('/offers/sent')
@@ -114,6 +122,50 @@ export default function BuyerOffersPage() {
       showSnackbar(msg, 'error');
     } finally {
       setPayingOffer(null);
+    }
+  };
+
+  const handleAcceptCounter = async (offer: Offer) => {
+    setAcceptingOffer(offer.id);
+    try {
+      await api.put(`/offers/${offer.id}/accept`);
+      setOffers((prev) =>
+        prev.map((o) => (o.id === offer.id ? { ...o, status: 'accepted' } : o))
+      );
+      showSnackbar('Counter offer accepted! You can now pay for the number.', 'success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to accept counter';
+      showSnackbar(msg, 'error');
+    } finally {
+      setAcceptingOffer(null);
+    }
+  };
+
+  const handleCounterBack = async () => {
+    if (!counterDialogOffer) return;
+    const amount = parseFloat(counterAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showSnackbar('Please enter a valid amount', 'error');
+      return;
+    }
+    setSubmittingCounter(true);
+    try {
+      await api.put(`/offers/${counterDialogOffer.id}/counter`, {
+        counterAmount: amount,
+        sellerResponse: counterMessage || '',
+      });
+      setOffers((prev) =>
+        prev.map((o) => (o.id === counterDialogOffer.id ? { ...o, status: 'pending', amount } : o))
+      );
+      showSnackbar('Your counter offer has been sent!', 'success');
+      setCounterDialogOffer(null);
+      setCounterAmount('');
+      setCounterMessage('');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to submit counter';
+      showSnackbar(msg, 'error');
+    } finally {
+      setSubmittingCounter(false);
     }
   };
 
@@ -217,7 +269,7 @@ export default function BuyerOffersPage() {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                             {offer.status === 'accepted' && (
                               <Button
                                 size="small"
@@ -229,6 +281,32 @@ export default function BuyerOffersPage() {
                               >
                                 {payingOffer === offer.id ? 'Loading...' : 'Pay Now'}
                               </Button>
+                            )}
+                            {offer.status === 'countered' && (
+                              <>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+                                  onClick={() => handleAcceptCounter(offer)}
+                                  disabled={acceptingOffer === offer.id}
+                                  sx={{ bgcolor: '#84BD00', '&:hover': { bgcolor: '#6B9A00' } }}
+                                >
+                                  {acceptingOffer === offer.id ? 'Accepting...' : 'Accept'}
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ borderColor: '#4BA0A1', color: '#4BA0A1' }}
+                                  onClick={() => {
+                                    setCounterDialogOffer(offer);
+                                    setCounterAmount('');
+                                    setCounterMessage('');
+                                  }}
+                                >
+                                  Counter
+                                </Button>
+                              </>
                             )}
                             <Button
                               size="small"
@@ -310,6 +388,34 @@ export default function BuyerOffersPage() {
                           {payingOffer === offer.id ? 'Loading...' : 'Pay Now'}
                         </Button>
                       )}
+                      {offer.status === 'countered' && (
+                        <>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            fullWidth
+                            startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+                            onClick={() => handleAcceptCounter(offer)}
+                            disabled={acceptingOffer === offer.id}
+                            sx={{ bgcolor: '#84BD00', '&:hover': { bgcolor: '#6B9A00' } }}
+                          >
+                            {acceptingOffer === offer.id ? 'Accepting...' : 'Accept Counter'}
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            fullWidth
+                            sx={{ borderColor: '#4BA0A1', color: '#4BA0A1' }}
+                            onClick={() => {
+                              setCounterDialogOffer(offer);
+                              setCounterAmount('');
+                              setCounterMessage('');
+                            }}
+                          >
+                            Counter Back
+                          </Button>
+                        </>
+                      )}
                       <Button size="small" variant="outlined" fullWidth onClick={() => setDetailOffer(offer)}>
                         Details
                       </Button>
@@ -386,7 +492,79 @@ export default function BuyerOffersPage() {
           </DialogContent>
         )}
         <DialogActions sx={{ px: 3, pb: 2 }}>
+          {detailOffer?.status === 'countered' && (
+            <>
+              <Button
+                variant="contained"
+                startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+                onClick={() => {
+                  setDetailOffer(null);
+                  handleAcceptCounter(detailOffer);
+                }}
+                sx={{ bgcolor: '#84BD00', '&:hover': { bgcolor: '#6B9A00' } }}
+              >
+                Accept Counter
+              </Button>
+              <Button
+                variant="outlined"
+                sx={{ borderColor: '#4BA0A1', color: '#4BA0A1' }}
+                onClick={() => {
+                  setDetailOffer(null);
+                  setCounterDialogOffer(detailOffer);
+                  setCounterAmount('');
+                  setCounterMessage('');
+                }}
+              >
+                Counter Back
+              </Button>
+            </>
+          )}
           <Button onClick={() => setDetailOffer(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Counter Back Dialog */}
+      <Dialog open={!!counterDialogOffer} onClose={() => setCounterDialogOffer(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600 }}>Counter Offer</DialogTitle>
+        {counterDialogOffer && (
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Their counter: <strong>{formatCurrency(counterDialogOffer.counterAmount || 0)}</strong> for{' '}
+              <strong>{counterDialogOffer.phoneNumber?.formatted || 'this number'}</strong>
+            </Typography>
+            <TextField
+              autoFocus
+              fullWidth
+              label="Your Counter Amount"
+              type="number"
+              value={counterAmount}
+              onChange={(e) => setCounterAmount(e.target.value)}
+              slotProps={{ input: { startAdornment: <InputAdornment position="start">$</InputAdornment> } }}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              label="Message (optional)"
+              multiline
+              rows={2}
+              value={counterMessage}
+              onChange={(e) => setCounterMessage(e.target.value)}
+              placeholder="Add a message..."
+            />
+          </DialogContent>
+        )}
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setCounterDialogOffer(null)} disabled={submittingCounter}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleCounterBack}
+            disabled={submittingCounter || !counterAmount}
+            sx={{ bgcolor: '#4BA0A1', '&:hover': { bgcolor: '#3d8889' } }}
+          >
+            {submittingCounter ? 'Sending...' : 'Send Counter'}
+          </Button>
         </DialogActions>
       </Dialog>
 

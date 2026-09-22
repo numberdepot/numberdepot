@@ -34,7 +34,9 @@
       "Bash(python3:*)",
       "Bash(netstat:*)",
       "Bash(fi:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(node test-offer-flow.js:*)",
+      "Bash(node cleanup-test.js:*)"
     ]
   }
 }

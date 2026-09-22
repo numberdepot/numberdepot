@@ -26,7 +26,13 @@ export async function PUT(
     const user = await db.collection('users').findOne({ _id: new ObjectId(payload.userId) });
     const isAdmin = user?.role === 'admin';
     const isSeller = offer.sellerId?.toString() === payload.userId;
-    if (!isAdmin && !isSeller) return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+    const isBuyer = offer.buyerId?.toString() === payload.userId;
+
+    // Buyer can only accept a countered offer (accepting the counter price)
+    if (isBuyer && offer.status !== 'countered') {
+      return NextResponse.json({ error: 'You can only accept a counter offer' }, { status: 400 });
+    }
+    if (!isAdmin && !isSeller && !isBuyer) return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
 
     const now = new Date();
     await offersColl.updateOne(

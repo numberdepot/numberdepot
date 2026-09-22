@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
         listingPrice: centsToDollars(o.listingPrice),
         offerAmount: centsToDollars(o.offerAmount),
         counterAmount: o.counterAmount ? centsToDollars(o.counterAmount) : null,
+        buyerCounter: o.buyerCounter ? centsToDollars(o.buyerCounter) : null,
         buyerName: buyer ? `${buyer.firstName} ${buyer.lastName}`.trim() : 'Unknown',
         buyerEmail: buyer?.email || '',
         sellerName: seller ? `${seller.firstName} ${seller.lastName}`.trim() : 'Platform',

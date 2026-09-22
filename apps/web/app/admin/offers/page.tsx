@@ -39,6 +39,7 @@ interface Offer {
   listingPrice: number;
   offerAmount: number;
   counterAmount: number | null;
+  buyerCounter: number | null;
   buyerName: string;
   buyerEmail: string;
   sellerName: string;
@@ -80,6 +81,7 @@ const statusLabel: Record<string, string> = {
 
 function OfferCard({ offer, onAction }: { offer: Offer; onAction: (id: string, action: string) => void }) {
   const canAct = offer.status === 'pending' || offer.status === 'countered';
+  const isBuyerCounter = offer.buyerCounter != null && offer.status === 'pending';
 
   return (
     <Box
@@ -89,17 +91,17 @@ function OfferCard({ offer, onAction }: { offer: Offer; onAction: (id: string, a
         gap: 2,
         p: 2,
         borderRadius: 2,
-        bgcolor: '#fff',
-        border: '1px solid',
-        borderColor: canAct ? '#e3e8ef' : '#f0f0f0',
+        bgcolor: isBuyerCounter ? '#fff8e1' : '#fff',
+        border: '2px solid',
+        borderColor: isBuyerCounter ? '#f9a825' : canAct ? '#e3e8ef' : '#f0f0f0',
         opacity: canAct ? 1 : 0.7,
-        '&:hover': canAct ? { borderColor: '#002664', bgcolor: '#fafbff' } : {},
+        '&:hover': canAct ? { borderColor: isBuyerCounter ? '#f57f17' : '#002664', bgcolor: isBuyerCounter ? '#fff3cd' : '#fafbff' } : {},
         transition: 'all 0.15s',
       }}
     >
       {/* Buyer avatar */}
-      <Avatar sx={{ bgcolor: canAct ? '#002664' : '#ccc', width: 36, height: 36, fontSize: 14 }}>
-        <PersonIcon sx={{ fontSize: 18 }} />
+      <Avatar sx={{ bgcolor: isBuyerCounter ? '#f9a825' : canAct ? '#002664' : '#ccc', width: 36, height: 36, fontSize: 14 }}>
+        {isBuyerCounter ? <SwapHorizIcon sx={{ fontSize: 18 }} /> : <PersonIcon sx={{ fontSize: 18 }} />}
       </Avatar>
 
       {/* Offer info */}
@@ -107,34 +109,65 @@ function OfferCard({ offer, onAction }: { offer: Offer; onAction: (id: string, a
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
           <Typography variant="body2" sx={{ fontWeight: 700 }}>{offer.buyerName}</Typography>
           <Typography variant="caption" color="text.secondary">{offer.buyerEmail}</Typography>
-          <Chip
-            label={statusLabel[offer.status] || offer.status}
-            size="small"
-            color={statusColor(offer.status) as any}
-            sx={{ fontSize: '0.65rem', height: 20 }}
-          />
-        </Box>
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 0.5 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, color: '#84BD00', fontSize: '1rem' }}>
-            ${offer.offerAmount.toFixed(2)}
-          </Typography>
-          {offer.counterAmount != null && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <SwapHorizIcon sx={{ fontSize: 14, color: 'info.main' }} />
-              <Typography variant="body2" sx={{ fontWeight: 700, color: 'info.main' }}>
-                Counter: ${offer.counterAmount.toFixed(2)}
-              </Typography>
-            </Box>
+          {isBuyerCounter ? (
+            <Chip
+              label="Buyer Countered"
+              size="small"
+              sx={{ fontSize: '0.65rem', height: 22, fontWeight: 700, bgcolor: '#f9a825', color: '#fff' }}
+            />
+          ) : (
+            <Chip
+              label={statusLabel[offer.status] || offer.status}
+              size="small"
+              color={statusColor(offer.status) as any}
+              sx={{ fontSize: '0.65rem', height: 20 }}
+            />
           )}
         </Box>
+
+        {/* Negotiation Trail */}
+        {isBuyerCounter ? (
+          <Box sx={{ mb: 1, p: 1.5, borderRadius: 1.5, bgcolor: '#fff', border: '1px solid #e0e0e0' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#84BD00', flexShrink: 0 }} />
+              <Typography variant="caption" color="text.secondary" sx={{ minWidth: 100 }}>Original Offer</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>${offer.offerAmount.toFixed(2)}</Typography>
+            </Box>
+            {offer.counterAmount != null && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75, pl: 0.25 }}>
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#1976d2', flexShrink: 0 }} />
+                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 100 }}>Your Counter</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: '#1976d2' }}>${offer.counterAmount.toFixed(2)}</Typography>
+              </Box>
+            )}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 0.25 }}>
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#f9a825', flexShrink: 0 }} />
+              <Typography variant="caption" sx={{ minWidth: 100, fontWeight: 600, color: '#e65100' }}>Buyer&apos;s Counter</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: '#e65100', fontSize: '1rem' }}>${offer.buyerCounter!.toFixed(2)}</Typography>
+            </Box>
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 0.5 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: '#84BD00', fontSize: '1rem' }}>
+              ${offer.offerAmount.toFixed(2)}
+            </Typography>
+            {offer.counterAmount != null && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <SwapHorizIcon sx={{ fontSize: 14, color: 'info.main' }} />
+                <Typography variant="body2" sx={{ fontWeight: 700, color: 'info.main' }}>
+                  Counter: ${offer.counterAmount.toFixed(2)}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        )}
 
         {offer.buyerMessage && (
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontStyle: 'italic' }}>
             &ldquo;{offer.buyerMessage}&rdquo;
           </Typography>
         )}
-        {offer.sellerResponse && (
+        {offer.sellerResponse && !isBuyerCounter && (
           <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: 'info.main' }}>
             Response: &ldquo;{offer.sellerResponse}&rdquo;
           </Typography>
@@ -143,7 +176,7 @@ function OfferCard({ offer, onAction }: { offer: Offer; onAction: (id: string, a
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <AccessTimeIcon sx={{ fontSize: 12, color: 'text.disabled' }} />
           <Typography variant="caption" color="text.secondary">
-            {new Date(offer.createdAt).toLocaleDateString()} {new Date(offer.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {new Date(offer.updatedAt || offer.createdAt).toLocaleDateString()} {new Date(offer.updatedAt || offer.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Typography>
         </Box>
       </Box>
@@ -319,7 +352,8 @@ export default function AdminOffersPage() {
       }
       group.offers.push(offer);
       if (offer.status === 'pending' || offer.status === 'countered') group.pendingCount++;
-      if (offer.offerAmount > group.highestOffer) group.highestOffer = offer.offerAmount;
+      const latestAmount = offer.buyerCounter || offer.offerAmount;
+      if (latestAmount > group.highestOffer) group.highestOffer = latestAmount;
       if (offer.createdAt > group.latestDate) group.latestDate = offer.createdAt;
     }
     // Sort: groups with pending offers first, then by latest date

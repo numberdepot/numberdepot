@@ -193,6 +193,7 @@ export interface OfferDoc {
   listingPrice: number; // cents — the number's listed price
   offerAmount: number; // cents — buyer's offer
   counterAmount?: number; // cents — seller/admin counter
+  buyerCounter?: number; // cents — buyer's counter-back to admin's counter
   buyerMessage?: string;
   sellerResponse?: string;
   status: 'pending' | 'accepted' | 'declined' | 'countered' | 'cancelled' | 'expired';
