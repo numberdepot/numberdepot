@@ -38,6 +38,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { api } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { useAuth } from '@/lib/auth';
+import AdminShoppingNotice from '@/components/AdminShoppingNotice';
 import { useSnackbar } from '@/lib/snackbar';
 
 interface FeeItem {
@@ -125,7 +126,7 @@ function getTypeColor(type: string): string {
 export default function NumberDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { addItem } = useCart();
   const { showSnackbar } = useSnackbar();
 
@@ -173,6 +174,10 @@ export default function NumberDetailPage() {
   }, [params.id, router, showSnackbar]);
 
   const handleAddToCart = async () => {
+    if (isAdmin) {
+      showSnackbar('Admin accounts cannot buy numbers. Sign in with a customer account.', 'warning');
+      return;
+    }
     if (!user) {
       showSnackbar('Please log in to add items to your cart', 'warning');
       router.push('/login');
@@ -198,6 +203,10 @@ export default function NumberDetailPage() {
   };
 
   const handleSubmitOffer = async () => {
+    if (isAdmin) {
+      showSnackbar('Admin accounts cannot make offers. Sign in with a customer account.', 'warning');
+      return;
+    }
     if (!user) {
       showSnackbar('Please log in to make an offer', 'warning');
       router.push('/login');
@@ -488,6 +497,7 @@ export default function NumberDetailPage() {
                       fullWidth
                       startIcon={<LocalOfferIcon />}
                       onClick={() => setOfferDialogOpen(true)}
+                      disabled={isAdmin}
                       sx={{
                         py: 1.5,
                         fontSize: '1.05rem',
@@ -502,7 +512,8 @@ export default function NumberDetailPage() {
                     >
                       Make an Offer
                     </Button>
-                    {number.minimumOffer != null && (
+                    {isAdmin && <AdminShoppingNotice action="make offers" sx={{ mt: 1.5 }} />}
+                    {!isAdmin && number.minimumOffer != null && (
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
                         Minimum offer: ${number.minimumOffer.toFixed(2)}
                       </Typography>
@@ -626,7 +637,7 @@ export default function NumberDetailPage() {
                       fullWidth
                       startIcon={<AddShoppingCartIcon />}
                       onClick={handleAddToCart}
-                      disabled={addingToCart || number.isPurchasable === false}
+                      disabled={addingToCart || isAdmin || number.isPurchasable === false}
                       sx={{ py: 1.5, fontSize: '1.05rem' }}
                     >
                       {number.isPurchasable === false
@@ -648,11 +659,13 @@ export default function NumberDetailPage() {
                         fullWidth
                         startIcon={<LocalOfferIcon />}
                         onClick={() => setOfferDialogOpen(true)}
+                        disabled={isAdmin}
                         sx={{ mt: 1.5, py: 1.5, fontSize: '1.05rem' }}
                       >
                         Make an Offer
                       </Button>
                     )}
+                    {isAdmin && <AdminShoppingNotice sx={{ mt: 1.5 }} />}
                     {number.allowOffers && number.minimumOffer != null && (
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 0.75 }}>
                         Minimum offer: ${number.minimumOffer.toFixed(2)}

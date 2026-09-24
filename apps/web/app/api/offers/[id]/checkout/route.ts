@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { requireAuth } from '@/lib/auth-middleware';
+import { requireCustomer } from '@/lib/auth-middleware';
 import { apiHandler } from '@/lib/api-handler';
 import { getOffersCollection, getNumbersCollection, getOrdersCollection } from '@/lib/collections';
 import { getFees } from '@/lib/utils/fees';
@@ -8,13 +8,14 @@ import { dollarsToCents } from '@/lib/utils/pricing';
 import { insertOrderWithNumber } from '@/lib/utils/order-number';
 import { serializeOrder } from '@/lib/utils/order-serialize';
 import type { OrderDoc, OrderFeeLine } from '@/lib/types/db';
+import { agreedOfferAmount } from '@/lib/utils/offer-pricing';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   return apiHandler(async () => {
-    const auth = requireAuth(req);
+    const auth = await requireCustomer(req);
     const { id } = await params;
 
     const offersColl = await getOffersCollection();
@@ -38,8 +39,21 @@ export async function POST(
       return NextResponse.json({ error: 'Only accepted offers can be checked out' }, { status: 400 });
     }
 
-    // Agreed price is the counter amount (if admin countered) or the original offer amount
-    const agreedPriceCents = offer.counterAmount || offer.offerAmount;
+    // The payment window may have closed since the page was loaded — the cron
+    // runs on an interval, so do not rely on it having swept this one yet.
+    if (offer.paymentDueAt && new Date(offer.paymentDueAt) < new Date() && !offer.paidAt) {
+      return NextResponse.json(
+        { error: 'The payment window for this offer has closed. Please contact support or place a new offer.' },
+        { status: 410 }
+      );
+    }
+
+    // Frozen at accept time — never re-derived here, so the buyer is charged
+    // exactly what both sides agreed to.
+    const agreedPriceCents = agreedOfferAmount(offer);
+    if (!(agreedPriceCents > 0)) {
+      return NextResponse.json({ error: 'This offer has no agreed price' }, { status: 409 });
+    }
 
     // Verify the number still exists and is available
     const numbersColl = await getNumbersCollection();

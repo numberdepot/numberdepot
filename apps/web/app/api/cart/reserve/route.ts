@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { requireAuth } from '@/lib/auth-middleware';
+import { requireCustomer } from '@/lib/auth-middleware';
 import { getNumbersCollection } from '@/lib/collections';
 import { apiHandler } from '@/lib/api-handler';
 import { formatNumberDoc } from '@/lib/utils/pricing';
@@ -9,7 +9,7 @@ const RESERVATION_MINUTES = 15;
 
 export async function POST(req: NextRequest) {
   return apiHandler(async () => {
-    const auth = requireAuth(req);
+    const auth = await requireCustomer(req);
     const { numberId } = await req.json();
 
     if (!numberId || !ObjectId.isValid(numberId)) {

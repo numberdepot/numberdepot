@@ -21,6 +21,7 @@ import CreditCardIcon from '@mui/icons-material/CreditCard';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useCart } from '@/lib/cart';
 import { useAuth } from '@/lib/auth';
+import AdminShoppingNotice from '@/components/AdminShoppingNotice';
 import { useSnackbar } from '@/lib/snackbar';
 import { api, ApiError } from '@/lib/api';
 import { loadAcceptJs, tokenizeCard, isAcceptConfigured, isSandbox } from '@/lib/accept-js';
@@ -69,7 +70,7 @@ function money(n: number) {
 function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { items, refreshCart, clearCart } = useCart();
   const { showSnackbar } = useSnackbar();
 
@@ -155,7 +156,17 @@ function CheckoutContent() {
   // Totals always come from the server, never from adding things up here.
   const fetchQuote = useCallback(async () => {
     if (isOfferCheckout) return;
-    if (items.length === 0) { setLoadingQuote(false); return; }
+    if (isAdmin) {
+    return (
+      <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
+        <Box sx={{ maxWidth: 520, width: '100%' }}>
+          <AdminShoppingNotice action="check out" />
+        </Box>
+      </Box>
+    );
+  }
+
+  if (items.length === 0) { setLoadingQuote(false); return; }
     setLoadingQuote(true);
     setQuoteError(null);
     try {

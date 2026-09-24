@@ -66,21 +66,58 @@ export async function sendOrderConfirmation(
 
 export async function sendOfferNotification(
   email: string,
-  type: 'new_offer' | 'counter' | 'accepted' | 'declined',
-  data: { number: string; offerAmount: number; counterAmount?: number; buyerName?: string; sellerName?: string }
+  type: 'new_offer' | 'counter' | 'accepted' | 'declined' | 'payment_expired' | 'payment_extended',
+  data: {
+    number: string;
+    offerAmount: number;
+    counterAmount?: number;
+    buyerName?: string;
+    sellerName?: string;
+    paymentDueAt?: Date;
+    windowHours?: number;
+  }
 ) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://numberdepotinc.com';
+  const due = data.paymentDueAt
+    ? new Date(data.paymentDueAt).toLocaleString('en-US', {
+        dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/New_York',
+      }) + ' ET'
+    : '';
+
   const subjects: Record<string, string> = {
     new_offer: `New Offer on ${data.number}`,
     counter: `Counter Offer on ${data.number}`,
     accepted: `Offer Accepted — ${data.number}`,
     declined: `Offer Declined — ${data.number}`,
+    payment_expired: `Offer Expired — ${data.number}`,
+    payment_extended: `More Time to Pay — ${data.number}`,
   };
 
   const bodies: Record<string, string> = {
     new_offer: `<p>${data.buyerName || 'A buyer'} has made an offer of <strong>$${(data.offerAmount / 100).toFixed(2)}</strong> on number <strong>${data.number}</strong>.</p><p>Log in to your dashboard to review and respond.</p>`,
     counter: `<p>A counter offer of <strong>$${((data.counterAmount || 0) / 100).toFixed(2)}</strong> has been made on number <strong>${data.number}</strong>.</p><p>Log in to your dashboard to review.</p>`,
-    accepted: `<p>Your offer of <strong>$${(data.offerAmount / 100).toFixed(2)}</strong> on <strong>${data.number}</strong> has been accepted!</p><p>Log in to complete your purchase.</p>`,
+    accepted: `<p>Your offer of <strong>$${(data.offerAmount / 100).toFixed(2)}</strong> on <strong>${data.number}</strong> has been accepted!</p>
+      <p style="background:#fff8e1;border-left:4px solid #f9a825;padding:12px 16px;border-radius:6px;">
+        Please complete payment by <strong>${due || `within ${data.windowHours ?? 24} hours`}</strong>.
+        If we do not receive payment by then, the offer expires automatically and the number goes back on sale.
+      </p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${appUrl}/account/offers" style="background:#84BD00;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">Pay Now</a>
+      </div>`,
     declined: `<p>Your offer of <strong>$${(data.offerAmount / 100).toFixed(2)}</strong> on <strong>${data.number}</strong> has been declined.</p><p>You can make a new offer or browse other numbers.</p>`,
+    payment_expired: `<p>Your accepted offer of <strong>$${(data.offerAmount / 100).toFixed(2)}</strong> on <strong>${data.number}</strong> has expired because payment was not completed in time.</p>
+      <p>The number has been returned to our marketplace and is available to other buyers.</p>
+      <p>Still want it? You are welcome to place a new offer.</p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${appUrl}/search" style="background:#002664;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">Browse Numbers</a>
+      </div>`,
+    payment_extended: `<p>Good news — we have given you more time to pay for <strong>${data.number}</strong>.</p>
+      <p style="background:#e8f5e9;border-left:4px solid #84BD00;padding:12px 16px;border-radius:6px;">
+        Your offer of <strong>$${(data.offerAmount / 100).toFixed(2)}</strong> is held until <strong>${due}</strong>.
+      </p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${appUrl}/account/offers" style="background:#84BD00;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">Pay Now</a>
+      </div>`,
   };
 
   try {

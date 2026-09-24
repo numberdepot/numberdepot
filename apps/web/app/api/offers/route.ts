@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { requireAuth } from '@/lib/auth-middleware';
+import { requireCustomer } from '@/lib/auth-middleware';
 import { apiHandler } from '@/lib/api-handler';
 import { getDb } from '@/lib/db';
 import { getOffersCollection, getNumbersCollection } from '@/lib/collections';
@@ -10,7 +10,7 @@ import { sendOfferNotification } from '@/lib/resend';
 
 export async function POST(req: NextRequest) {
   return apiHandler(async () => {
-    const payload = requireAuth(req);
+    const payload = await requireCustomer(req);
     const body = await req.json();
 
     const { numberId, amount, message } = body;

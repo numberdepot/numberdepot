@@ -159,7 +159,49 @@ BASE_URL=http://localhost:3000 npm run verify:payments
 
 ---
 
-## 4. Backups
+## 4. Scheduled jobs
+
+Two jobs keep the marketplace honest:
+
+* **Offer expiry** — an accepted offer whose payment window has closed is
+  expired, its number goes back on sale, and the buyer is emailed.
+* **Reservation cleanup** — cart holds past their 15 minutes are released.
+
+**They run inside the app. There is no crontab to set up.** The schedule starts
+with the server and ticks every 15 minutes.
+
+```
+CRON_INTERVAL_MINUTES=15        # optional, 1–720, default 15
+DISABLE_IN_PROCESS_CRON=true    # optional, turns the internal schedule off
+```
+
+The first tick happens shortly after the first request following a restart, and
+runs unattended from then on. Confirm it started:
+
+```bash
+docker compose logs web | grep Scheduler
+# [Scheduler] Offer expiry and reservation cleanup every 15 minute(s).
+```
+
+If you ever prefer an external scheduler, set `DISABLE_IN_PROCESS_CRON=true` and
+point it at the endpoints — they call exactly the same code, and the jobs are
+safe to run twice:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://numberdepotinc.com/api/cron/expire-unpaid-offers
+curl -H "Authorization: Bearer $CRON_SECRET" https://numberdepotinc.com/api/cron/cleanup-reservations
+```
+
+`CRON_SECRET` is required for those endpoints. Without it they refuse to run
+rather than sitting open to anyone who knows the URL.
+
+> Running more than one app container? Each starts its own schedule. That is
+> safe — every job claims its work with a conditional update, so overlapping
+> runs cannot expire the same offer twice or double-send email.
+
+---
+
+## 5. Backups
 
 The Atlas safety net is gone once you self-host — nothing takes backups now
 unless you set them up. A nightly dump into the bind mount:
@@ -175,7 +217,7 @@ Copy those off the VPS, and prune old ones. Test a restore before you need one.
 
 ---
 
-## 5. Day-to-day
+## 6. Day-to-day
 
 ```bash
 docker compose logs -f web             # app logs

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { requireAuth } from '@/lib/auth-middleware';
+import { requireCustomer } from '@/lib/auth-middleware';
 import { apiHandler } from '@/lib/api-handler';
 import { centsToDollars } from '@/lib/utils/pricing';
 import { priceOrder, type RequestedItem } from '@/lib/utils/order-pricing';
@@ -14,7 +14,7 @@ import { priceOrder, type RequestedItem } from '@/lib/utils/order-pricing';
  */
 export async function POST(req: NextRequest) {
   return apiHandler(async () => {
-    const auth = requireAuth(req);
+    const auth = await requireCustomer(req);
     const body = await req.json();
     const requested = body?.items as RequestedItem[];
 

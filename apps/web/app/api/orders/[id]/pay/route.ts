@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId, type Collection, type WithId } from 'mongodb';
-import { requireAuth } from '@/lib/auth-middleware';
+import { requireCustomer } from '@/lib/auth-middleware';
 import {
   getOrdersCollection,
   getNumbersCollection,
@@ -209,7 +209,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return apiHandler(async () => {
-    const auth = requireAuth(req);
+    const auth = await requireCustomer(req);
     const { id } = await params;
 
     if (!ObjectId.isValid(id)) {
@@ -488,6 +488,22 @@ export async function POST(
         $unset: { lastPaymentError: '' },
       }
     );
+
+    // Close out the offer this order came from. Without this an accepted offer
+    // stays "accepted" forever after payment, and the expiry cron cannot tell a
+    // paid offer from an abandoned one.
+    if (order.offerId) {
+      try {
+        const { getOffersCollection } = await import('@/lib/collections');
+        const offersCol = await getOffersCollection();
+        await offersCol.updateOne(
+          { _id: order.offerId },
+          { $set: { paidAt: now, orderId: order._id, updatedAt: now } }
+        );
+      } catch (err) {
+        console.error('[Pay] Could not mark the offer as paid:', err);
+      }
+    }
 
     // ── Best-effort notifications ──
     try {

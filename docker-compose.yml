@@ -58,6 +58,8 @@ services:
       # database by MONGO_INITDB_ROOT_*.
       MONGODB_URI: mongodb://${MONGO_USER}:${MONGO_PASS}@mongo:27017/numberdepot?authSource=admin
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      CRON_SECRET: ${CRON_SECRET}
+      CRON_INTERVAL_MINUTES: ${CRON_INTERVAL_MINUTES:-15}
       RESEND_API_KEY: ${RESEND_API_KEY}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-NumberDepot <noreply@numberdepotinc.com>}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://numberdepotinc.com}

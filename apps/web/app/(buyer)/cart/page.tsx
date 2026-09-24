@@ -21,6 +21,7 @@ import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import TimerIcon from '@mui/icons-material/Timer';
 import { useCart } from '@/lib/cart';
 import { useAuth } from '@/lib/auth';
+import AdminShoppingNotice from '@/components/AdminShoppingNotice';
 import { useSnackbar } from '@/lib/snackbar';
 import { api } from '@/lib/api';
 
@@ -119,7 +120,7 @@ function ReservationTimer({ expiresAt }: { expiresAt: string | null }) {
 
 export default function CartPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { items, removeItem, refreshCart, loading: cartLoading } = useCart();
   const { showSnackbar } = useSnackbar();
   const [removing, setRemoving] = useState<string | null>(null);
@@ -222,6 +223,10 @@ export default function CartPage() {
   // Payment itself happens on /checkout, where the totals are recomputed on the
   // server and the card is tokenised by Accept.js before anything is charged.
   const handleCheckout = () => {
+    if (isAdmin) {
+      showSnackbar('Admin accounts cannot buy numbers. Sign in with a customer account.', 'warning');
+      return;
+    }
     setCheckingOut(true);
     router.push('/checkout');
   };
@@ -416,13 +421,14 @@ export default function CartPage() {
                     </Typography>
                   )}
 
+                  {isAdmin && <AdminShoppingNotice action="check out" sx={{ mb: 2 }} />}
                   <Button
                     variant="contained"
                     color="secondary"
                     fullWidth
                     size="large"
                     onClick={handleCheckout}
-                    disabled={checkingOut}
+                    disabled={checkingOut || isAdmin}
                     sx={{ py: 1.5, fontSize: '1.05rem', mb: 1.5 }}
                   >
                     {checkingOut ? (

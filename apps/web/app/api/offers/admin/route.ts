@@ -5,6 +5,7 @@ import { apiHandler } from '@/lib/api-handler';
 import { getOffersCollection } from '@/lib/collections';
 import { getDb } from '@/lib/db';
 import { centsToDollars } from '@/lib/utils/pricing';
+import { liveOfferAmount } from '@/lib/utils/offer-pricing';
 
 export async function GET(req: NextRequest) {
   return apiHandler(async () => {
@@ -56,8 +57,18 @@ export async function GET(req: NextRequest) {
         number: o.formattedNumber || o.number,
         listingPrice: centsToDollars(o.listingPrice),
         offerAmount: centsToDollars(o.offerAmount),
-        counterAmount: o.counterAmount ? centsToDollars(o.counterAmount) : null,
-        buyerCounter: o.buyerCounter ? centsToDollars(o.buyerCounter) : null,
+        counterAmount: o.counterAmount != null ? centsToDollars(o.counterAmount) : null,
+        buyerCounter: o.buyerCounter != null ? centsToDollars(o.buyerCounter) : null,
+        agreedAmount: o.agreedAmount != null ? centsToDollars(o.agreedAmount) : null,
+        paymentDueAt: o.paymentDueAt?.toISOString?.() || null,
+        paidAt: o.paidAt?.toISOString?.() || null,
+        paidManually: !!o.paidManually,
+        expiredReason: o.expiredReason || null,
+        paymentExtensionCount: o.paymentExtensionCount || 0,
+        buyerCounterMessage: o.buyerCounterMessage || '',
+        // Whose figure is live right now, so the UI never has to guess.
+        liveAmount: centsToDollars(liveOfferAmount(o).amount),
+        liveFrom: liveOfferAmount(o).from,
         buyerName: buyer ? `${buyer.firstName} ${buyer.lastName}`.trim() : 'Unknown',
         buyerEmail: buyer?.email || '',
         sellerName: seller ? `${seller.firstName} ${seller.lastName}`.trim() : 'Platform',

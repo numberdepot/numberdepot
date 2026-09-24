@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { requireAuth } from '@/lib/auth-middleware';
+import { requireAuth, isAdminRole } from '@/lib/auth-middleware';
 import { apiHandler } from '@/lib/api-handler';
 import { getDb } from '@/lib/db';
 import { getOffersCollection } from '@/lib/collections';
@@ -25,7 +25,7 @@ export async function PUT(
 
     const db = await getDb();
     const user = await db.collection('users').findOne({ _id: new ObjectId(payload.userId) });
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = isAdminRole(user?.role);
     const isSeller = offer.sellerId?.toString() === payload.userId;
     if (!isAdmin && !isSeller) return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
 

@@ -129,8 +129,13 @@ export interface PaymentDoc {
   // Denormalised so the admin table never needs a join to render.
   userEmail: string;
   userName: string;
-  gateway: 'authorizenet';
+  /** 'manual' = taken outside the gateway and recorded by an admin. */
+  gateway: 'authorizenet' | 'manual';
   environment: 'sandbox' | 'production';
+  /** How an off-gateway payment arrived, and the admin's reference for it. */
+  manualMethod?: 'bank_transfer' | 'cash' | 'cheque' | 'card_in_person' | 'other';
+  manualReference?: string;
+  recordedBy?: ObjectId;
   amount: number; // cents
   currency: 'USD';
   status: 'approved' | 'declined' | 'error' | 'held' | 'voided' | 'refunded';
@@ -194,10 +199,32 @@ export interface OfferDoc {
   offerAmount: number; // cents — buyer's offer
   counterAmount?: number; // cents — seller/admin counter
   buyerCounter?: number; // cents — buyer's counter-back to admin's counter
-  buyerMessage?: string;
+  /**
+   * The figure both sides settled on, frozen when the offer was accepted, so
+   * checkout can never re-derive a different number later.
+   */
+  agreedAmount?: number; // cents
+  buyerMessage?: string; // the buyer's note on their opening offer
+  buyerCounterMessage?: string; // the buyer's note on their latest counter-back
   sellerResponse?: string;
   status: 'pending' | 'accepted' | 'declined' | 'countered' | 'cancelled' | 'expired';
+  /** Deadline for the buyer to respond while the offer is still pending. */
   expiresAt: Date;
+  /**
+   * Once accepted, the buyer has a limited window to pay. Past this the offer
+   * expires automatically and the number goes back on sale. An admin can push
+   * it out, or revive an already-expired offer, from the admin panel.
+   */
+  paymentDueAt?: Date;
+  paidAt?: Date;
+  orderId?: ObjectId; // the order that paid for this offer
+  /** Set when an admin recorded payment taken outside the gateway. */
+  paidManually?: boolean;
+  /** Why an expired offer expired — the two cases read very differently. */
+  expiredReason?: 'no_response' | 'payment_window';
+  paymentExtendedAt?: Date;
+  paymentExtendedBy?: ObjectId;
+  paymentExtensionCount?: number;
   createdAt: Date;
   updatedAt: Date;
   acceptedAt?: Date;

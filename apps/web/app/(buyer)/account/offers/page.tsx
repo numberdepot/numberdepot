@@ -28,6 +28,34 @@ import PaymentIcon from '@mui/icons-material/Payment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { api } from '@/lib/api';
 import { useSnackbar } from '@/lib/snackbar';
+import { timeLeftLabel } from '@/lib/utils/time-left';
+
+/** "3h 12m left to pay", turning red inside the last two hours. */
+function PayDeadline({ dueAt }: { dueAt?: string | null }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => tick((n) => n + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (!dueAt) return null;
+  const msLeft = new Date(dueAt).getTime() - Date.now();
+  const overdue = msLeft <= 0;
+  const urgent = !overdue && msLeft < 2 * 60 * 60 * 1000;
+
+  return (
+    <Typography
+      variant="caption"
+      sx={{
+        display: 'block',
+        fontWeight: 700,
+        color: overdue ? '#E53935' : urgent ? '#E65100' : 'text.secondary',
+      }}
+    >
+      {overdue ? 'Payment overdue' : `${timeLeftLabel(dueAt)} to pay`}
+    </Typography>
+  );
+}
 
 interface Offer {
   id: string;
@@ -36,6 +64,9 @@ interface Offer {
   buyerMessage?: string;
   counterAmount?: number;
   sellerResponse?: string;
+  paymentDueAt?: string | null;
+  paidAt?: string | null;
+  expiredReason?: string | null;
   createdAt: string;
   updatedAt: string;
   phoneNumber?: {
@@ -282,6 +313,7 @@ export default function BuyerOffersPage() {
                                 {payingOffer === offer.id ? 'Loading...' : 'Pay Now'}
                               </Button>
                             )}
+                            {offer.status === 'accepted' && <PayDeadline dueAt={offer.paymentDueAt} />}
                             {offer.status === 'countered' && (
                               <>
                                 <Button

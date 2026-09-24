@@ -30,7 +30,9 @@ import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import { api } from '@/lib/api';
+import Alert from '@mui/material/Alert';
 import { useSnackbar } from '@/lib/snackbar';
+import { timeLeftLabel } from '@/lib/utils/time-left';
 
 interface Offer {
   id: string;
@@ -40,6 +42,16 @@ interface Offer {
   offerAmount: number;
   counterAmount: number | null;
   buyerCounter: number | null;
+  agreedAmount: number | null;
+  paymentDueAt: string | null;
+  paidAt: string | null;
+  paidManually: boolean;
+  expiredReason: string | null;
+  paymentExtensionCount: number;
+  buyerCounterMessage: string;
+  /** The figure on the table right now, and whose it is — computed server-side. */
+  liveAmount: number;
+  liveFrom: 'buyer' | 'seller';
   buyerName: string;
   buyerEmail: string;
   sellerName: string;
@@ -169,6 +181,38 @@ function OfferCard({ offer, onAction }: { offer: Offer; onAction: (id: string, a
             &ldquo;{offer.buyerMessage}&rdquo;
           </Typography>
         )}
+        {offer.status === 'accepted' && !offer.paidAt && (
+          <Typography
+            variant="caption"
+            sx={{
+              display: 'block',
+              mb: 0.5,
+              fontWeight: 700,
+              color: offer.paymentDueAt && new Date(offer.paymentDueAt) < new Date() ? '#E53935' : '#e65100',
+            }}
+          >
+            {offer.paymentDueAt
+              ? `Awaiting payment · ${timeLeftLabel(offer.paymentDueAt)}`
+              : 'Awaiting payment'}
+            {offer.paymentExtensionCount > 0 && ` · extended ${offer.paymentExtensionCount}×`}
+          </Typography>
+        )}
+        {offer.paidAt && (
+          <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 700, color: '#84BD00' }}>
+            Paid {new Date(offer.paidAt).toLocaleDateString()}{offer.paidManually ? ' · recorded manually' : ''}
+          </Typography>
+        )}
+        {offer.status === 'expired' && offer.expiredReason === 'payment_window' && (
+          <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: '#E53935' }}>
+            Expired — payment was not completed in time
+          </Typography>
+        )}
+
+        {offer.buyerCounterMessage && isBuyerCounter && (
+          <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: '#e65100', fontStyle: 'italic' }}>
+            Buyer&apos;s note: &ldquo;{offer.buyerCounterMessage}&rdquo;
+          </Typography>
+        )}
         {offer.sellerResponse && !isBuyerCounter && (
           <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: 'info.main' }}>
             Response: &ldquo;{offer.sellerResponse}&rdquo;
@@ -217,14 +261,60 @@ function OfferCard({ offer, onAction }: { offer: Offer; onAction: (id: string, a
             Decline
           </Button>
         </Box>
-      ) : offer.status === 'countered' && (
+      ) : offer.status === 'accepted' && !offer.paidAt ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, flexShrink: 0, px: 1 }}>
+          <AccessTimeIcon sx={{ fontSize: 20, color: '#e65100' }} />
+          <Typography variant="caption" sx={{ color: '#e65100', fontWeight: 600, textAlign: 'center', lineHeight: 1.2, mb: 0.5 }}>
+            Awaiting<br />payment
+          </Typography>
+          <Button
+            size="small"
+            variant="contained"
+            color="success"
+            onClick={() => onAction(offer.id, 'approve-payment')}
+            sx={{ minWidth: 90, fontSize: '0.7rem', py: 0.4 }}
+          >
+            Mark as paid
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="warning"
+            onClick={() => onAction(offer.id, 'extend')}
+            sx={{ minWidth: 90, fontSize: '0.7rem', py: 0.4 }}
+          >
+            Give more time
+          </Button>
+        </Box>
+      ) : offer.status === 'expired' && offer.expiredReason === 'payment_window' ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, flexShrink: 0, px: 1 }}>
+          <Button
+            size="small"
+            variant="contained"
+            color="success"
+            onClick={() => onAction(offer.id, 'approve-payment')}
+            sx={{ minWidth: 90, fontSize: '0.7rem', py: 0.4, mb: 0.5 }}
+          >
+            Mark as paid
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="warning"
+            onClick={() => onAction(offer.id, 'extend')}
+            sx={{ minWidth: 90, fontSize: '0.7rem', py: 0.4 }}
+          >
+            Reopen &amp; allow payment
+          </Button>
+        </Box>
+      ) : offer.status === 'countered' ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, flexShrink: 0, px: 1 }}>
           <AccessTimeIcon sx={{ fontSize: 20, color: '#4BA0A1' }} />
           <Typography variant="caption" sx={{ color: '#4BA0A1', fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>
             Waiting for<br />buyer response
           </Typography>
         </Box>
-      )}
+      ) : null}
     </Box>
   );
 }
@@ -314,6 +404,12 @@ export default function AdminOffersPage() {
   const [actionLoading, setActionLoading] = useState(false);
 
   // Counter dialog state
+  const [acceptDialogOffer, setAcceptDialogOffer] = useState<Offer | null>(null);
+  const [extendDialogOffer, setExtendDialogOffer] = useState<Offer | null>(null);
+  const [payDialogOffer, setPayDialogOffer] = useState<Offer | null>(null);
+  const [payMethod, setPayMethod] = useState('bank_transfer');
+  const [payReference, setPayReference] = useState('');
+  const [extendHours, setExtendHours] = useState('24');
   const [counterDialogOfferId, setCounterDialogOfferId] = useState<string | null>(null);
   const [counterAmount, setCounterAmount] = useState('');
   const [counterMessage, setCounterMessage] = useState('');
@@ -379,6 +475,35 @@ export default function AdminOffersPage() {
       setCounterAmount('');
       setCounterMessage('');
       return;
+    }
+
+    if (action === 'approve-payment') {
+      const target = offers.find((o) => o.id === offerId);
+      if (target) {
+        setPayDialogOffer(target);
+        setPayMethod('bank_transfer');
+        setPayReference('');
+        return;
+      }
+    }
+
+    if (action === 'extend') {
+      const target = offers.find((o) => o.id === offerId);
+      if (target) {
+        setExtendDialogOffer(target);
+        setExtendHours('24');
+        return;
+      }
+    }
+
+    if (action === 'accept') {
+      // Never accept blind — the admin must see the exact figure they are
+      // agreeing to, since accepting is what sets the price the buyer pays.
+      const target = offers.find((o) => o.id === offerId);
+      if (target) {
+        setAcceptDialogOffer(target);
+        return;
+      }
     }
 
     setActionLoading(true);
@@ -482,6 +607,199 @@ export default function AdminOffersPage() {
           ))}
         </Box>
       )}
+
+      {/* Accept Confirmation — shows exactly what is being agreed to */}
+      <Dialog open={!!acceptDialogOffer} onClose={() => !actionLoading && setAcceptDialogOffer(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Accept this offer?</DialogTitle>
+        <DialogContent>
+          {acceptDialogOffer && (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {acceptDialogOffer.buyerName} · {acceptDialogOffer.number}
+              </Typography>
+
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: '#f8f9fb', border: '1px solid #e0e0e0', mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary">Original offer</Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 700 }}>${acceptDialogOffer.offerAmount.toFixed(2)}</Typography>
+                </Box>
+                {acceptDialogOffer.counterAmount != null && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary">Your counter</Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#1976d2' }}>${acceptDialogOffer.counterAmount.toFixed(2)}</Typography>
+                  </Box>
+                )}
+                {acceptDialogOffer.buyerCounter != null && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="caption" color="text.secondary">Buyer&apos;s counter</Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#e65100' }}>${acceptDialogOffer.buyerCounter.toFixed(2)}</Typography>
+                  </Box>
+                )}
+              </Box>
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Buyer will pay</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 800, color: '#84BD00' }}>
+                  ${acceptDialogOffer.liveAmount.toFixed(2)}
+                </Typography>
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                Other offers on this number will be declined automatically.
+              </Typography>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAcceptDialogOffer(null)} disabled={actionLoading}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="success"
+            disabled={actionLoading}
+            onClick={async () => {
+              if (!acceptDialogOffer) return;
+              setActionLoading(true);
+              try {
+                await api.put(`/offers/${acceptDialogOffer.id}/accept`);
+                showSnackbar(`Accepted at $${acceptDialogOffer.liveAmount.toFixed(2)}. Competing offers declined.`, 'success');
+                setAcceptDialogOffer(null);
+                fetchOffers();
+              } catch (err) {
+                showSnackbar(err instanceof Error ? err.message : 'Action failed', 'error');
+              } finally {
+                setActionLoading(false);
+              }
+            }}
+          >
+            {actionLoading ? 'Accepting…' : `Accept $${acceptDialogOffer?.liveAmount.toFixed(2) ?? ''}`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Record a payment taken outside the gateway */}
+      <Dialog open={!!payDialogOffer} onClose={() => !actionLoading && setPayDialogOffer(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Record payment received</DialogTitle>
+        <DialogContent>
+          {payDialogOffer && (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {payDialogOffer.buyerName} · {payDialogOffer.number}
+              </Typography>
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                This does not charge anyone. Use it only when the money has already
+                reached you outside the site. It transfers the number to the buyer
+                and completes the sale immediately.
+              </Alert>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Amount agreed</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 800, color: '#84BD00' }}>
+                  ${(payDialogOffer.agreedAmount ?? payDialogOffer.liveAmount).toFixed(2)}
+                </Typography>
+              </Box>
+              <TextField
+                select fullWidth label="How was it paid?" value={payMethod}
+                onChange={(e) => setPayMethod(e.target.value)} sx={{ mb: 2 }}
+              >
+                <MenuItem value="bank_transfer">Bank transfer</MenuItem>
+                <MenuItem value="cash">Cash</MenuItem>
+                <MenuItem value="cheque">Cheque</MenuItem>
+                <MenuItem value="card_in_person">Card in person</MenuItem>
+                <MenuItem value="other">Other</MenuItem>
+              </TextField>
+              <TextField
+                fullWidth required label="Reference" value={payReference}
+                onChange={(e) => setPayReference(e.target.value)}
+                placeholder="Transfer ID, cheque no., receipt no."
+                helperText="Required — there is no gateway transaction to trace this to later."
+                slotProps={{ htmlInput: { maxLength: 200 } }}
+              />
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPayDialogOffer(null)} disabled={actionLoading}>Cancel</Button>
+          <Button
+            variant="contained" color="success"
+            disabled={actionLoading || !payReference.trim()}
+            onClick={async () => {
+              if (!payDialogOffer) return;
+              setActionLoading(true);
+              try {
+                const res = await api.post<{ message: string }>(
+                  `/offers/${payDialogOffer.id}/approve-payment`,
+                  { method: payMethod, reference: payReference.trim() }
+                );
+                showSnackbar(res.data?.message || 'Payment recorded', 'success');
+                setPayDialogOffer(null);
+                fetchOffers();
+              } catch (err) {
+                showSnackbar(err instanceof Error ? err.message : 'Could not record the payment', 'error');
+              } finally {
+                setActionLoading(false);
+              }
+            }}
+          >
+            {actionLoading ? 'Recording…' : 'Confirm payment received'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Give the buyer more time, or reopen a lapsed offer */}
+      <Dialog open={!!extendDialogOffer} onClose={() => !actionLoading && setExtendDialogOffer(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          {extendDialogOffer?.status === 'expired' ? 'Reopen this offer?' : 'Give more time to pay'}
+        </DialogTitle>
+        <DialogContent>
+          {extendDialogOffer && (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {extendDialogOffer.buyerName} · {extendDialogOffer.number} · ${(extendDialogOffer.agreedAmount ?? extendDialogOffer.liveAmount).toFixed(2)}
+              </Typography>
+              {extendDialogOffer.status === 'expired' && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  This offer expired because payment was not completed. Reopening it lets the buyer pay again — only possible while the number is still unsold.
+                </Alert>
+              )}
+              <TextField
+                autoFocus
+                fullWidth
+                type="number"
+                label="Hours to allow"
+                value={extendHours}
+                onChange={(e) => setExtendHours(e.target.value)}
+                helperText="Counted from now. The buyer is notified by email."
+                slotProps={{ htmlInput: { min: 1, max: 720 } }}
+              />
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExtendDialogOffer(null)} disabled={actionLoading}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={actionLoading || !extendHours}
+            onClick={async () => {
+              if (!extendDialogOffer) return;
+              setActionLoading(true);
+              try {
+                const res = await api.put<{ message: string }>(
+                  `/offers/${extendDialogOffer.id}/extend-payment`,
+                  { hours: parseFloat(extendHours) }
+                );
+                showSnackbar(res.data?.message || 'Buyer notified', 'success');
+                setExtendDialogOffer(null);
+                fetchOffers();
+              } catch (err) {
+                showSnackbar(err instanceof Error ? err.message : 'Action failed', 'error');
+              } finally {
+                setActionLoading(false);
+              }
+            }}
+          >
+            {actionLoading ? 'Saving…' : extendDialogOffer?.status === 'expired' ? 'Reopen' : 'Extend'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Counter Offer Dialog */}
       <Dialog open={!!counterDialogOfferId} onClose={() => setCounterDialogOfferId(null)} maxWidth="sm" fullWidth>

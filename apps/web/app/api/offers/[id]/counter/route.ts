@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { requireAuth } from '@/lib/auth-middleware';
+import { requireAuth, isAdminRole, ADMIN_CANNOT_SHOP } from '@/lib/auth-middleware';
 import { apiHandler } from '@/lib/api-handler';
 import { getDb } from '@/lib/db';
 import { getOffersCollection } from '@/lib/collections';
@@ -32,9 +32,18 @@ export async function PUT(
 
     const db = await getDb();
     const user = await db.collection('users').findOne({ _id: new ObjectId(payload.userId) });
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = isAdminRole(user?.role);
     const isSeller = offer.sellerId?.toString() === payload.userId;
     const isBuyer = offer.buyerId?.toString() === payload.userId;
+
+
+    // An admin runs the marketplace and must never be a party to a purchase.
+    // Their seller-side powers below are untouched; this only stops them acting
+    // as the buyer, which can only happen on a legacy offer made before the
+    // account was promoted.
+    if (isBuyer && isAdmin) {
+      return NextResponse.json({ error: ADMIN_CANNOT_SHOP }, { status: 403 });
+    }
 
     // Buyer can only counter-back a countered offer
     if (isBuyer && offer.status !== 'countered') {
@@ -43,25 +52,40 @@ export async function PUT(
     if (!isAdmin && !isSeller && !isBuyer) return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
 
     const now = new Date();
-    const updateFields: Record<string, unknown> = {
-      status: 'countered',
-      counterAmount: counterCents,
-      updatedAt: now,
-    };
 
-    // If buyer is countering back, store as buyerCounter; if admin/seller, store as sellerResponse
+    // Every counter restarts the response clock. `expiresAt` is set once when
+    // the offer is created, and the list routes expire any *pending* offer past
+    // it — so without this, a negotiation still going on day 8 would be swept
+    // away mid-conversation because the original 7 days had run out.
+    const RESPONSE_WINDOW_DAYS = 7;
+    const expiresAt = new Date(now.getTime() + RESPONSE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+    const updateFields: Record<string, unknown> = { updatedAt: now, expiresAt };
+
+    // The two sides write to two DIFFERENT fields. An earlier version set
+    // `counterAmount` on every counter, so a buyer countering back overwrote
+    // the admin's counter — the admin panel then showed its own counter as the
+    // buyer's figure, and checkout charged whatever the buyer had typed.
     if (isBuyer) {
       updateFields.buyerCounter = counterCents;
-      updateFields.buyerMessage = sellerResponse || '';
-      // Reset status to pending so admin sees the new counter from buyer
+      // Keep the opening message intact; the counter's note is its own field.
+      updateFields.buyerCounterMessage = typeof sellerResponse === 'string' ? sellerResponse.slice(0, 1000) : '';
+      // Back to the admin's court.
       updateFields.status = 'pending';
     } else {
-      updateFields.sellerResponse = sellerResponse || '';
+      updateFields.counterAmount = counterCents;
+      updateFields.sellerResponse = typeof sellerResponse === 'string' ? sellerResponse.slice(0, 1000) : '';
+      updateFields.status = 'countered';
     }
 
+    // The buyer's previous counter-back is answered once the admin replies, so
+    // it stops being the live figure. Clearing it keeps the admin list from
+    // flagging this offer as still awaiting a response.
     await offersColl.updateOne(
       { _id: new ObjectId(id) },
-      { $set: updateFields }
+      isBuyer
+        ? { $set: updateFields }
+        : { $set: updateFields, $unset: { buyerCounter: '' as const, buyerCounterMessage: '' as const } }
     );
 
     if (isBuyer) {
