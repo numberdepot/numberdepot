@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
 
     const params = req.nextUrl.searchParams;
     const status = params.get('status');
+    const search = params.get('q')?.trim();
     const page = Math.max(1, parseInt(params.get('page') || '1'));
     const limit = Math.min(100, Math.max(1, parseInt(params.get('limit') || '25')));
     const skip = (page - 1) * limit;
@@ -23,6 +24,44 @@ export async function GET(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: Record<string, any> = {};
     if (status) filter.status = status;
+
+    // ── Search by phone number or by the person who made the offer ──
+    if (search) {
+      const escapeRx = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escaped = escapeRx(search);
+      const digits = search.replace(/\D/g, '');
+
+      // The number is stored twice: E.164 digits ("12012496789") and formatted
+      // ("(201) 249-6789"). Match whichever the admin happened to type.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const or: Record<string, any>[] = [
+        { formattedNumber: { $regex: escaped, $options: 'i' } },
+      ];
+      if (digits.length >= 2) or.push({ number: { $regex: digits } });
+
+      // People live in another collection, so resolve them to ids first.
+      // Every word typed must match somewhere on the user, which is what makes
+      // "scott klein" work when the two halves sit in different fields.
+      const tokens = search.split(/\s+/).filter(Boolean).slice(0, 5);
+      const userFilter = {
+        $and: tokens.map((t) => {
+          const rx = { $regex: escapeRx(t), $options: 'i' };
+          return { $or: [{ firstName: rx }, { lastName: rx }, { email: rx }] };
+        }),
+      };
+      const matchedUsers = await db
+        .collection('users')
+        .find(userFilter, { projection: { _id: 1 } })
+        .limit(200)
+        .toArray();
+
+      if (matchedUsers.length > 0) {
+        const ids = matchedUsers.map((u) => u._id);
+        or.push({ buyerId: { $in: ids } }, { sellerId: { $in: ids } });
+      }
+
+      filter.$or = or;
+    }
 
     // Expire old offers
     const now = new Date();

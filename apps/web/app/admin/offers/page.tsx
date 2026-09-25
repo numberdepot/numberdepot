@@ -31,6 +31,8 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import { api } from '@/lib/api';
 import Alert from '@mui/material/Alert';
+import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
 import { useSnackbar } from '@/lib/snackbar';
 import { timeLeftLabel } from '@/lib/utils/time-left';
 
@@ -401,6 +403,8 @@ export default function AdminOffersPage() {
   const [limit, setLimit] = useState(100);
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   // Counter dialog state
@@ -416,6 +420,11 @@ export default function AdminOffersPage() {
 
   const { showSnackbar } = useSnackbar();
 
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search.trim()); setPage(0); }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const fetchOffers = useCallback(async () => {
     setLoading(true);
     try {
@@ -423,6 +432,7 @@ export default function AdminOffersPage() {
       params.set('page', String(page + 1));
       params.set('limit', String(limit));
       if (statusFilter) params.set('status', statusFilter);
+      if (debouncedSearch) params.set('q', debouncedSearch);
 
       const res = await api.get<Offer[]>(`/offers/admin?${params}`);
       if (res.data) setOffers(res.data);
@@ -433,7 +443,7 @@ export default function AdminOffersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, statusFilter, showSnackbar]);
+  }, [page, limit, statusFilter, debouncedSearch, showSnackbar]);
 
   useEffect(() => {
     fetchOffers();
@@ -569,7 +579,30 @@ export default function AdminOffersPage() {
       </Box>
 
       {/* Filters */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+        <TextField
+          size="small"
+          placeholder="Search by number or buyer name…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ minWidth: 300, flex: 1 }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: search ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setSearch('')} aria-label="Clear search">
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
+            },
+          }}
+        />
         <TextField
           select
           label="Status"
